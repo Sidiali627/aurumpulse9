@@ -202,8 +202,7 @@ async function runTests() {
 
         // التحقق من تسجيل الصفقة بنجاح في الإحصائيات ثم استعادة خط الأساس
         assert.strictEqual(loadDB().stats.totalSignals, initialStats.totalSignals + 1, 'Total signals incremented');
-        updateDB((d) => { d.stats = initialStats; });
-        await saveDB(loadDB());
+        await updateDB((d) => { d.stats = initialStats; });
 
         // تنظيف
         engineState.activeTrades = [];

@@ -63,30 +63,45 @@ async function runMigration() {
         await client.query('BEGIN');
 
         // Migrate Licenses (Never overwrite: ON CONFLICT DO NOTHING)
+        const crypto = require('crypto');
         const licenses = Object.entries(dbData.licenses || {});
         let insertedLicenses = 0;
         let skippedLicenses = 0;
+        let skippedDemoCount = 0;
 
         for (const [key, lic] of licenses) {
+            // Strictly exclude demo licenses from production PostgreSQL migration
+            if (key.startsWith('DEMO-') || (lic.plan && String(lic.plan).toLowerCase().includes('demo'))) {
+                skippedDemoCount++;
+                continue;
+            }
+
+            const keyHash = lic.keyHash || crypto.createHash('sha256').update(key.trim().toUpperCase()).digest('hex');
+            const status = lic.status || (lic.active ? 'active' : 'revoked');
+            const installationId = lic.installationId || null;
+
             const res = await client.query(
-                `INSERT INTO aurumpulse_licenses (key, plan, client_name, days, created_at, expires_at, telegram_chat_id, active)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `INSERT INTO aurumpulse_licenses (key, key_hash, plan, client_name, days, created_at, expires_at, telegram_chat_id, installation_id, status, active)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                  ON CONFLICT (key) DO NOTHING;`,
                 [
                     key,
+                    keyHash,
                     lic.plan || 'Standard',
                     lic.clientName || 'User',
                     lic.days || 30,
                     lic.createdAt || new Date().toISOString().split('T')[0],
                     lic.expiresAt || new Date().toISOString().split('T')[0],
                     lic.telegramChatId ? String(lic.telegramChatId) : null,
+                    installationId,
+                    status,
                     Boolean(lic.active)
                 ]
             );
             if (res.rowCount > 0) insertedLicenses++;
             else skippedLicenses++;
         }
-        console.log(`>>> Licenses: ${insertedLicenses} inserted, ${skippedLicenses} preserved without overwrite.`);
+        console.log(`>>> Licenses: ${insertedLicenses} inserted, ${skippedLicenses} preserved without overwrite, ${skippedDemoCount} demo licenses excluded.`);
 
         // Migrate Global Config
         if (dbData.adminChatId) {

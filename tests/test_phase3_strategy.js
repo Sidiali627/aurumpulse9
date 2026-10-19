@@ -288,6 +288,7 @@ async function runTests() {
 
     it('5.2 manageOpenTradesLifecycle resolves ambiguous candle with worst-case execution (SL first)', async () => {
         const { engineState, manageOpenTradesLifecycle, saveActiveTradesToDB } = require('../bot_engine.js');
+        const initialStats = JSON.parse(JSON.stringify(loadDB().stats));
         
         // Setup synthetic active trade
         engineState.activeTrades = [{
@@ -321,6 +322,9 @@ async function runTests() {
         const db = loadDB();
         const latestHistory = db.stats.history[0];
         assert(latestHistory.status.includes('SL (Worst-Case)'), 'History must record worst-case SL execution');
+
+        // Restore clean persistent stats baseline to prevent test pollution
+        await updateDB((d) => { d.stats = initialStats; });
     });
 
     it('5.3 findActiveORBSession rejects weekend candles without error', () => {

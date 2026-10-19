@@ -40,12 +40,15 @@ async function runRollback() {
         const licenses = {};
         for (const row of licRes.rows) {
             licenses[row.key] = {
+                keyHash: row.key_hash || null,
                 plan: row.plan,
                 clientName: row.client_name,
                 days: row.days,
-                createdAt: row.created_at ? row.created_at.toISOString().split('T')[0] : null,
-                expiresAt: row.expires_at ? row.expires_at.toISOString().split('T')[0] : null,
+                createdAt: row.created_at ? (typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString().split('T')[0]) : null,
+                expiresAt: row.expires_at ? (typeof row.expires_at === 'string' ? row.expires_at : row.expires_at.toISOString().split('T')[0]) : null,
                 telegramChatId: row.telegram_chat_id ? Number(row.telegram_chat_id) || row.telegram_chat_id : null,
+                installationId: row.installation_id || null,
+                status: row.status || 'active',
                 active: row.active
             };
         }

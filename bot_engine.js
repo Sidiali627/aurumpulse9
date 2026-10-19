@@ -15,6 +15,22 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const {
+    validateProductionLicense,
+    generateProductionKey,
+    hashLicenseKey,
+    checkRateLimit,
+    clearRateLimit,
+    resetAllRateLimits,
+    isProductionEnv
+} = require('./licensing_manager.js');
+
+function maskChatId(chatId) {
+    if (!chatId) return '[UNCONFIGURED]';
+    const s = String(chatId).trim();
+    if (s.length <= 4) return '****';
+    return `${s.slice(0, 3)}****${s.slice(-2)}`;
+}
 
 // ============================================================================
 // 1. تحميل متغيرات البيئة تلقائياً (Zero Dependency .env Loader)
@@ -120,100 +136,17 @@ function nativeRequest(urlStr, options = {}) {
 }
 
 // ============================================================================
-// 4. مدير قاعدة البيانات المحمي (Atomic Writes, Mutex Queue & Safe Recovery)
+// 4. مدير قاعدة البيانات المحمي (Universal PostgreSQL & Atomic JSON Adapter)
 // ============================================================================
-let dbWriteQueue = Promise.resolve();
-let cachedDB = null;
-
-function loadDB() {
-    if (cachedDB) return cachedDB;
-
-    if (!fs.existsSync(DB_FILE)) {
-        const demoPath = path.join(__dirname, 'database.demo.json');
-        const backupPath = path.join(__dirname, '.backup', 'phase2_before_phase3', 'database.json');
-        if (fs.existsSync(demoPath)) {
-            console.log('[DB NOTICE] Initializing database from sanitized demo template (database.demo.json)...');
-            fs.copyFileSync(demoPath, DB_FILE);
-        } else if (fs.existsSync(backupPath)) {
-            console.warn('[DB NOTICE] database.json missing, restoring from backup...');
-            fs.copyFileSync(backupPath, DB_FILE);
-        } else {
-            throw new Error('Database file missing and no backup or demo template found.');
-        }
-    }
-
-    try {
-        const rawContent = fs.readFileSync(DB_FILE, 'utf8');
-        cachedDB = JSON.parse(rawContent);
-        if (!cachedDB.activeTrades) cachedDB.activeTrades = [];
-        if (!cachedDB.sessionTrades) cachedDB.sessionTrades = {};
-        if (!cachedDB.licenses) cachedDB.licenses = {};
-        if (!cachedDB.stats) cachedDB.stats = { totalSignals: 0, wins: 0, losses: 0, breakevens: 0, netR: 0, history: [] };
-        return cachedDB;
-    } catch (e) {
-        console.error('[DB CRITICAL ERROR] Malformed JSON in database.json:', e.message);
-        const corruptFile = path.join(__dirname, `database.corrupt.${Date.now()}.json`);
-        try { fs.copyFileSync(DB_FILE, corruptFile); } catch (_) {}
-
-        const backupPath = path.join(__dirname, '.backup', 'phase2_before_phase3', 'database.json');
-        if (fs.existsSync(backupPath)) {
-            console.warn('[DB RECOVERY] Loading from last-known-good backup...');
-            const backupContent = fs.readFileSync(backupPath, 'utf8');
-            cachedDB = JSON.parse(backupContent);
-            return cachedDB;
-        }
-        throw new Error(`Database corrupted and no backup could be loaded: ${e.message}`);
-    }
-}
-
-function atomicWriteFileSync(filePath, contentStr) {
-    const dir = path.dirname(filePath);
-    const tempFile = path.join(dir, `.tmp_${path.basename(filePath)}_${process.pid}_${Date.now()}`);
-    fs.writeFileSync(tempFile, contentStr, 'utf8');
-
-    let retries = 5;
-    while (retries > 0) {
-        try {
-            fs.renameSync(tempFile, filePath);
-            break;
-        } catch (err) {
-            retries--;
-            if (retries === 0) {
-                try {
-                    fs.copyFileSync(tempFile, filePath);
-                    fs.unlinkSync(tempFile);
-                    break;
-                } catch (fallbackErr) {
-                    throw new Error(`Atomic write failed: ${err.message}`);
-                }
-            }
-            const start = Date.now();
-            while (Date.now() - start < 20) {}
-        }
-    }
-}
-
-function saveDB(db) {
-    cachedDB = db;
-    dbWriteQueue = dbWriteQueue.then(() => {
-        try {
-            const jsonStr = JSON.stringify(db, null, 2);
-            atomicWriteFileSync(DB_FILE, jsonStr);
-        } catch (e) {
-            console.error('[DB SAVE ERROR]:', e.message);
-        }
-    }).catch(err => {
-        console.error('[DB QUEUE ERROR]:', err.message);
-    });
-    return dbWriteQueue;
-}
-
-function updateDB(mutatorFn) {
-    const db = loadDB();
-    mutatorFn(db);
-    saveDB(db);
-    return db;
-}
+const {
+    loadDB,
+    saveDB,
+    updateDB,
+    atomicWriteFileSync,
+    initStorage,
+    isPostgresConfigured,
+    getPostgresPool
+} = require('./db_adapter.js');
 
 // ============================================================================
 // 5. التحقق من سلامة بيانات الشموع (Task 1: Candle Integrity)
@@ -937,22 +870,25 @@ async function scanGoldMarket() {
 }
 
 // ============================================================================
-// 10. محرك تيليجرام الآمن وإدارة التراخيص
+// 10. محرك تيليجرام الآمن وإدارة التراخيص (Production Licensing Engine)
 // ============================================================================
-function validateLicenseKey(key) {
+function validateLicenseKey(key, options = {}) {
     const db = loadDB();
-    const cleanKey = (key || '').trim().toUpperCase();
-    if (!cleanKey) return { valid: false, reason: 'يرجى إدخال مفتاح الترخيص.' };
-
-    const lic = db.licenses[cleanKey];
-    if (!lic || !lic.active) return { valid: false, reason: 'كود التفعيل غير مسجل أو تم إيقافه.' };
-
-    const today = new Date().toISOString().split('T')[0];
-    if (lic.expiresAt < today) {
-        return { valid: false, reason: `انتهت صلاحية اشتراكك بتاريخ (${lic.expiresAt}). تواصل مع ${ADMIN_CONTACT_USER} للتجديد.` };
-    }
-
-    return { valid: true, license: lic, key: cleanKey };
+    const result = validateProductionLicense(key, db, options);
+    return {
+        valid: result.valid,
+        statusCode: result.statusCode || (result.valid ? 200 : 403),
+        retryAfter: result.retryAfter,
+        reason: result.message,
+        message: result.message,
+        license: result.license || null,
+        key: result.key || key,
+        clientName: result.clientName || null,
+        plan: result.plan || null,
+        expiresAt: result.expiresAt || null,
+        status: result.status || null,
+        installationId: result.installationId || null
+    };
 }
 
 function getActiveSubscriberByChatId(chatId) {
@@ -966,32 +902,28 @@ function getActiveSubscriberByChatId(chatId) {
     return null;
 }
 
-function createNewLicense(days = 30, plan = 'VIP Pro', clientName = 'متداول VIP') {
-    const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const newKey = `GOLD-${p1}-${p2}`;
-
-    const expDate = new Date();
-    expDate.setDate(expDate.getDate() + parseInt(days, 10));
-    const expStr = expDate.toISOString().split('T')[0];
-
+function createNewLicense(days = 30, plan = 'VIP Pro', clientName = 'متداول VIP', options = {}) {
+    const generated = generateProductionKey(plan, days, clientName, options);
     updateDB((db) => {
-        db.licenses[newKey] = {
-            plan,
-            clientName,
-            days: parseInt(days, 10),
-            createdAt: new Date().toISOString().split('T')[0],
-            expiresAt: expStr,
-            telegramChatId: null,
-            active: true
-        };
+        db.licenses[generated.rawKey] = generated.record;
     });
 
-    return { key: newKey, expiresAt: expStr, days, plan, clientName };
+    return {
+        key: generated.rawKey,
+        keyHash: generated.keyHash,
+        expiresAt: generated.expiresAt,
+        days: parseInt(days, 10),
+        plan,
+        clientName,
+        status: 'active'
+    };
 }
 
 async function initTelegramBot() {
-    if (!TELEGRAM_TOKEN) return;
+    if (!TELEGRAM_TOKEN || TELEGRAM_TOKEN.includes('YOUR_TELEGRAM_BOT_TOKEN')) {
+        console.log('[TELEGRAM STATUS] Inactive (TELEGRAM_TOKEN is not configured in server environment). Web terminal operations remain fully functional.');
+        return;
+    }
     try {
         await nativeRequest(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteWebhook?drop_pending_updates=false`);
         const me = await nativeRequest(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getMe`);
@@ -1484,6 +1416,9 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/verify') {
         let key = '';
+        let installationId = null;
+
+        const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '127.0.0.1';
 
         if (req.method === 'POST') {
             let body = '';
@@ -1491,18 +1426,46 @@ const server = http.createServer(async (req, res) => {
             try {
                 const parsed = JSON.parse(body);
                 if (parsed.key) key = String(parsed.key).trim();
+                if (parsed.installationId) installationId = String(parsed.installationId).trim();
             } catch (_) {}
         } else if (req.method === 'GET') {
             console.warn('[DEPRECATION NOTICE] GET /api/verify?key=... is deprecated for security. Please use POST with JSON body.');
             key = String(url.searchParams.get('key') || '').trim();
+            installationId = String(url.searchParams.get('installationId') || '').trim() || null;
         }
 
-        const check = validateLicenseKey(key);
+        const check = validateLicenseKey(key, { clientIp, installationId });
         const db = loadDB();
+
+        if (check.statusCode === 429) {
+            res.writeHead(429, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Retry-After': String(check.retryAfter || 900)
+            });
+            res.end(JSON.stringify({
+                valid: false,
+                message: check.reason || 'تم تجاوز الحد الأقصى للمحاولات. يرجى الانتظار 15 دقيقة قبل المحاولة مجدداً.',
+                stats: db.stats
+            }));
+            return;
+        }
+
         res.writeHead(check.valid ? 200 : 403, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(check.valid
-            ? { valid: true, key: check.key, clientName: check.license.clientName, plan: check.license.plan, expiresAt: check.license.expiresAt, stats: db.stats }
-            : { valid: false, message: check.reason, stats: db.stats }
+            ? {
+                valid: true,
+                key: check.key,
+                clientName: check.clientName,
+                plan: check.plan,
+                expiresAt: check.expiresAt,
+                installationId: check.installationId,
+                stats: db.stats
+            }
+            : {
+                valid: false,
+                message: check.reason || 'رمز الترخيص غير صالح أو منتهي الصلاحية.',
+                stats: db.stats
+            }
         ));
         return;
     }
@@ -1537,9 +1500,10 @@ if (require.main === module) {
         console.log(`[AURUMPULSE v5.3 QUANT SECURE] Web Terminal: http://${HOST}:${PORT}`);
         console.log(`[DEPLOYMENT MODE] ${IS_DEMO_MODE ? 'DEMO ONLY (Signal Broadcasts Disabled)' : 'LIVE'}`);
         console.log(`[INSTRUMENT FEED] ${INSTRUMENT_NAME}`);
-        console.log(`[MASTER ADMIN CHAT ID] ${MASTER_ADMIN_CHAT_ID}`);
+        console.log(`[MASTER ADMIN CHAT ID] ${maskChatId(MASTER_ADMIN_CHAT_ID)}`);
         console.log('====================================================');
 
+        await initStorage();
         restoreActiveTradesFromDB();
         await initTelegramBot();
         scanGoldMarket();
@@ -1552,6 +1516,9 @@ module.exports = {
     loadDB,
     saveDB,
     updateDB,
+    initStorage,
+    isPostgresConfigured,
+    getPostgresPool,
     validateLicenseKey,
     createNewLicense,
     checkIsAdmin,

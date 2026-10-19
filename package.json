@@ -11,6 +11,8 @@
     "test:phase3": "node tests/test_phase3_strategy.js",
     "test:phase4": "node tests/test_phase4_backtest.js",
     "test:render": "node tests/test_render_deployment.js",
+    "test:licensing": "node tests/test_production_licensing.js",
+    "test:db": "node tests/test_postgres_integration.js",
     "test:all": "node tests/run_all_tests.js",
     "migrate:pg": "node scripts/migrate_to_postgres.js",
     "rollback:pg": "node scripts/rollback_from_postgres.js",

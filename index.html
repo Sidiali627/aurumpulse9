@@ -135,18 +135,15 @@
             </div>
 
             <div class="space-y-2 text-right pt-1">
-                <label class="text-xs text-amber-200/90 font-semibold block">مفتاح الترخيص الخاص بك (License Key):</label>
+                <label class="text-xs text-amber-200/90 font-semibold block">أدخل رمز الترخيص الخاص بك</label>
                 <input
                     type="text"
                     id="licenseKeyInput"
-                    placeholder="DEMO-TRIAL-7DAY أو DEMO-GOLD-VIP"
+                    placeholder="أدخل رمز الترخيص هنا..."
                     autocomplete="off"
                     onkeydown="if(event.key === 'Enter') checkLicenseKey()"
                     class="w-full bg-[#07090e] border border-amber-500/40 rounded-xl py-3 px-4 text-center mono font-bold text-amber-300 uppercase tracking-wider focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                 >
-                <p class="text-[11px] text-amber-400/80 text-center pt-1">
-                    نسخة العرض التجريبي: مفتاح الدخول المتاح <code>DEMO-TRIAL-7DAY</code> أو <code>DEMO-GOLD-VIP</code>
-                </p>
                 <p id="licenseStatusMsg" class="text-xs hidden font-bold text-center pt-1"></p>
             </div>
 
@@ -157,7 +154,7 @@
                     onclick="checkLicenseKey()"
                     class="w-full gold-gradient-bg text-slate-950 font-black py-3 rounded-xl shadow-lg shadow-amber-500/10 active:scale-[0.99] transition cursor-pointer text-sm"
                 >
-                    تفعيل الكود وفتح المنصة ⚡
+                    تفعيل الرمز وفتح المنصة
                 </button>
             </div>
 
@@ -198,9 +195,6 @@
                     <span class="brand-font text-[10px] text-slate-400 tracking-widest hidden sm:inline">XAU/USD ICT BREAKOUT RADAR</span>
                     <span id="feedSourceBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 mono">
                         BINANCE PAXG/USDT FEED
-                    </span>
-                    <span id="demoModeBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/40 mono font-bold">
-                        DEMO MODE
                     </span>
                 </div>
                 <div class="flex items-center gap-2 mt-0.5">
@@ -587,14 +581,14 @@
                     return;
                 } else {
                     statusEl.className = 'text-xs font-bold text-center pt-1 text-rose-400';
-                    statusEl.innerText = `❌ ${data.message || 'هذا الكود غير مسجل أو منتهي الصلاحية!'}`;
-                    btn.innerText = 'تفعيل الكود وفتح المنصة ⚡';
+                    statusEl.innerText = `❌ ${data.message || 'رمز الترخيص غير صالح أو منتهي الصلاحية!'}`;
+                    btn.innerText = 'تفعيل الرمز وفتح المنصة';
                     return;
                 }
             } catch (err) {
                 statusEl.className = 'text-xs font-bold text-center pt-1 text-rose-400';
-                statusEl.innerText = '❌ تعذر الاتصال بخادم التراخيص (Port 8080). تأكد من تشغيل السيرفر: npm start';
-                btn.innerText = 'تفعيل الكود وفتح المنصة ⚡';
+                statusEl.innerText = '❌ تعذر الاتصال بخادم التراخيص. تأكد من تشغيل السيرفر أو الاتصال بالشبكة.';
+                btn.innerText = 'تفعيل الرمز وفتح المنصة';
             }
         }
 
