@@ -1,0 +1,33 @@
+{
+  "adminChatId": null,
+  "licenses": {
+    "DEMO-TRIAL-7DAY": {
+      "plan": "Demo Trial (7 Days)",
+      "clientName": "زائر تجريبي (Demo Visitor)",
+      "days": 7,
+      "createdAt": "2026-10-19",
+      "expiresAt": "2026-10-26",
+      "telegramChatId": null,
+      "active": true
+    },
+    "DEMO-GOLD-VIP": {
+      "plan": "Demo VIP (30 Days)",
+      "clientName": "متداول تجريبي (Demo VIP)",
+      "days": 30,
+      "createdAt": "2026-10-19",
+      "expiresAt": "2026-11-19",
+      "telegramChatId": null,
+      "active": true
+    }
+  },
+  "stats": {
+    "totalSignals": 0,
+    "wins": 0,
+    "losses": 0,
+    "breakevens": 0,
+    "netR": 0,
+    "history": []
+  },
+  "sessionTrades": {},
+  "activeTrades": []
+}

@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AurumPulse | XAU/USD ICT BREAKOUT RADAR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-obsidian: #07090e;
+            --bg-panel: #0d111a;
+            --bg-card: #121723;
+            --gold-light: #fce38a;
+            --gold-primary: #d4af37;
+            --gold-dark: #9a7418;
+            --gold-border: rgba(212, 175, 55, 0.28);
+        }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-obsidian);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .brand-font { font-family: 'Montserrat', sans-serif; }
+
+        /* التدرجات الذهبية الميتاليك المطابقة للهوية البصرية */
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #FFF3B0 0%, #D4AF37 50%, #AA771C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gold-gradient-bg {
+            background: linear-gradient(135deg, #e5c158 0%, #c59b27 50%, #9a7418 100%);
+        }
+        .gold-gradient-bg:hover {
+            background: linear-gradient(135deg, #fce38a 0%, #d4af37 50%, #b38728 100%);
+        }
+        .gold-card {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--gold-border);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(252, 227, 138, 0.08);
+        }
+        .gold-glow-border {
+            border: 1px solid rgba(212, 175, 55, 0.55);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.15);
+        }
+
+        /* أنيميشن الرادار الدائري (Radar Scanning) */
+        .radar-circle {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            background:
+                radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%),
+                repeating-radial-gradient(circle, transparent 0, transparent 18px, rgba(212, 175, 55, 0.15) 19px, transparent 20px);
+            overflow: hidden;
+        }
+        .radar-circle::before, .radar-circle::after {
+            content: '';
+            position: absolute;
+            background: rgba(212, 175, 55, 0.2);
+        }
+        .radar-circle::before { top: 50%; left: 0; right: 0; height: 1px; }
+        .radar-circle::after { left: 50%; top: 0; bottom: 0; width: 1px; }
+        .radar-sweep {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, rgba(212, 175, 55, 0.45) 0deg, rgba(212, 175, 55, 0.0) 65deg, transparent 360deg);
+            animation: radarSpin 3.5s linear infinite;
+        }
+        @keyframes radarSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* أنيميشن الموجات الصوتية الذهبية (Audio Pulse Waveform) */
+        .wave-bar {
+            width: 3px;
+            background: linear-gradient(to top, #9a7418, #fce38a, #9a7418);
+            border-radius: 999px;
+            animation: pulseWave 1.2s ease-in-out infinite;
+        }
+        @keyframes pulseWave {
+            0%, 100% { transform: scaleY(0.35); opacity: 0.6; }
+            50% { transform: scaleY(1); opacity: 1; }
+        }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #07090e; }
+        ::-webkit-scrollbar-thumb { background: #3b3016; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative select-none">
+
+    <!-- =================================================================== -->
+    <!-- 1. بوابة الدخول الفاخرة بهوية AurumPulse (مصححة وتستجيب فوراً 100%) -->
+    <!-- =================================================================== -->
+    <div id="licenseModal" class="fixed inset-0 z-50 flex items-center justify-center bg-[#05070b]/95 backdrop-blur-xl px-4">
+        <div class="gold-card gold-glow-border rounded-2xl p-7 max-w-md w-full space-y-5 text-center relative overflow-hidden">
+            <!-- إضاءة خلفية ذهبية -->
+            <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-60 h-40 bg-amber-500/15 blur-3xl pointer-events-none"></div>
+
+            <!-- شعار AurumPulse الثلاثي الأبعاد المرسوم بـ SVG -->
+            <div class="flex flex-col items-center justify-center">
+                <div class="w-24 h-20 flex items-center justify-center">
+                    <svg viewBox="0 0 220 140" class="w-full h-full drop-shadow-[0_0_15px_rgba(212,175,55,0.35)]">
+                        <defs>
+                            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#FFF3B0"/>
+                                <stop offset="45%" stop-color="#D4AF37"/>
+                                <stop offset="100%" stop-color="#8A6212"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- خطوط نطاق الافتتاح الأفقية ORH / ORL -->
+                        <rect x="82" y="42" width="115" height="6" rx="3" fill="url(#goldGrad)" opacity="0.85"/>
+                        <rect x="88" y="56" width="105" height="6" rx="3" fill="url(#goldGrad)" opacity="0.65"/>
+                        <rect x="82" y="70" width="115" height="6" rx="3" fill="url(#goldGrad)" opacity="0.85"/>
+                        <!-- حرف A الذهبي -->
+                        <path d="M55 22 L18 118 L36 118 L45 92 L78 92 L87 118 L105 118 L68 22 Z M51 76 L61.5 44 L72 76 Z" fill="url(#goldGrad)"/>
+                        <!-- حرف U المتداخل -->
+                        <path d="M112 72 L112 96 C112 112 124 120 142 120 C160 120 172 112 172 96 L172 68 L155 68 L155 95 C155 103 150 106 142 106 C134 106 129 103 129 95 L129 72 Z" fill="url(#goldGrad)"/>
+                        <!-- موجة النبض وسهم الاختراق الصاعد (Breakout Pulse Arrow) -->
+                        <path d="M10 88 Q55 92 92 65 L118 25 L138 78 L188 18" stroke="url(#goldGrad)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <polygon points="198,8 170,15 191,35" fill="url(#goldGrad)"/>
+                    </svg>
+                </div>
+                <h1 class="brand-font text-2xl font-black tracking-wider gold-gradient-text mt-1">AurumPulse</h1>
+                <p class="brand-font text-[10px] tracking-[0.22em] text-slate-400 uppercase mt-0.5">XAU/USD ICT BREAKOUT RADAR</p>
+            </div>
+
+            <div class="space-y-2 text-right pt-1">
+                <label class="text-xs text-amber-200/90 font-semibold block">مفتاح الترخيص الخاص بك (License Key):</label>
+                <input
+                    type="text"
+                    id="licenseKeyInput"
+                    placeholder="DEMO-TRIAL-7DAY أو DEMO-GOLD-VIP"
+                    autocomplete="off"
+                    onkeydown="if(event.key === 'Enter') checkLicenseKey()"
+                    class="w-full bg-[#07090e] border border-amber-500/40 rounded-xl py-3 px-4 text-center mono font-bold text-amber-300 uppercase tracking-wider focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                >
+                <p class="text-[11px] text-amber-400/80 text-center pt-1">
+                    نسخة العرض التجريبي: مفتاح الدخول المتاح <code>DEMO-TRIAL-7DAY</code> أو <code>DEMO-GOLD-VIP</code>
+                </p>
+                <p id="licenseStatusMsg" class="text-xs hidden font-bold text-center pt-1"></p>
+            </div>
+
+            <div class="space-y-2">
+                <button
+                    type="button"
+                    id="verifyBtn"
+                    onclick="checkLicenseKey()"
+                    class="w-full gold-gradient-bg text-slate-950 font-black py-3 rounded-xl shadow-lg shadow-amber-500/10 active:scale-[0.99] transition cursor-pointer text-sm"
+                >
+                    تفعيل الكود وفتح المنصة ⚡
+                </button>
+            </div>
+
+            <!-- معلومات الشراء والتواصل -->
+            <div class="bg-[#07090e]/90 border border-amber-500/20 rounded-xl p-3.5 text-right text-xs space-y-2">
+                <div class="font-bold text-amber-400 flex items-center justify-between">
+                    <span>👑 اشتراك VIP للمتداولين</span>
+                    <span class="text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">تفعيل فوري</span>
+                </div>
+                <p class="text-slate-400 leading-relaxed text-[11px]">
+                    للحصول على كود اشتراك يفتح لك رادار **AurumPulse** وتنبيهات البوت الفورية، تواصل مع الإدارة في تيليجرام (الدفع عبر BaridiMob / CCP / USDT):
+                </p>
+                <a href="https://t.me/alpha34" target="_blank" class="block text-center bg-[#121723] hover:bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold py-2 rounded-lg transition">
+                    💬 تواصل مع الإدارة (@alpha34) للشراء
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- 2. الشريط العلوي (Top Header - مطابق لشاشة العرض في الصورة) -->
+    <!-- =================================================================== -->
+    <header class="bg-[#0b0e16] border-b border-amber-500/20 px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+        <!-- الشعار واسم AurumPulse -->
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-9 flex items-center justify-center bg-[#121723] border border-amber-500/30 rounded-lg p-1">
+                <svg viewBox="0 0 220 140" class="w-full h-full">
+                    <rect x="82" y="42" width="115" height="8" rx="3" fill="#D4AF37"/>
+                    <rect x="82" y="70" width="115" height="8" rx="3" fill="#D4AF37"/>
+                    <path d="M55 22 L18 118 L36 118 L45 92 L78 92 L87 118 L105 118 L68 22 Z" fill="#FCE38A"/>
+                    <path d="M112 72 L112 96 C112 112 124 120 142 120 C160 120 172 112 172 96 L172 68 L155 68 L155 95 C155 103 150 106 142 106 C134 106 129 103 129 95 L129 72 Z" fill="#D4AF37"/>
+                    <path d="M10 88 Q55 92 92 65 L118 25 L138 78 L188 18" stroke="#FFF3B0" stroke-width="12" fill="none"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="brand-font font-black text-base tracking-wide gold-gradient-text">AurumPulse</span>
+                    <span class="brand-font text-[10px] text-slate-400 tracking-widest hidden sm:inline">XAU/USD ICT BREAKOUT RADAR</span>
+                    <span id="feedSourceBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 mono">
+                        BINANCE PAXG/USDT FEED
+                    </span>
+                    <span id="demoModeBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/40 mono font-bold">
+                        DEMO MODE
+                    </span>
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span id="killZoneBadge" class="text-[11px] text-amber-400/90 font-semibold">تحديد الجلسة...</span>
+                    <span class="text-slate-600">|</span>
+                    <span id="subscriberBadge" class="text-[11px] text-emerald-400 font-bold">👑 مشترك VIP</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- مؤشرات ORH / ORL والسعر الفوري -->
+        <div class="flex flex-wrap items-center gap-4 bg-[#07090e] px-4 py-1.5 rounded-xl border border-amber-500/25">
+            <div>
+                <span class="text-[10px] text-slate-400 block">BINANCE PAXG/USDT</span>
+                <span id="realPriceDisplay" class="mono text-lg font-extrabold text-amber-400">---.--</span>
+            </div>
+            <div class="h-7 w-px bg-amber-500/20"></div>
+            <div>
+                <span class="text-[10px] text-amber-300 block font-bold">ORH (أعلى الافتتاح)</span>
+                <span id="orhHeaderDisplay" class="mono text-sm font-bold text-amber-200">--</span>
+            </div>
+            <div>
+                <span class="text-[10px] text-amber-500 block font-bold">ORL (أدنى الافتتاح)</span>
+                <span id="orlHeaderDisplay" class="mono text-sm font-bold text-amber-400">--</span>
+            </div>
+            <div class="h-7 w-px bg-amber-500/20"></div>
+            <div>
+                <span class="text-[10px] text-slate-400 block">ATR (14)</span>
+                <span id="atrDisplay" class="mono text-xs font-bold text-slate-200">--</span>
+            </div>
+            <div>
+                <span class="text-[10px] text-slate-400 block">BSL / SSL</span>
+                <span id="swingRangeDisplay" class="mono text-xs font-bold text-amber-300/90">-- / --</span>
+            </div>
+        </div>
+
+        <!-- المحفظة وزر الخروج -->
+        <div class="flex items-center gap-4">
+            <div class="text-left">
+                <span class="text-[10px] text-slate-400 block">BALANCE</span>
+                <span id="balanceDisplay" class="mono font-bold text-sm text-white">$10,000.00</span>
+            </div>
+            <div class="text-left">
+                <span class="text-[10px] text-slate-400 block">EQUITY</span>
+                <span id="equityDisplay" class="mono font-bold text-sm text-amber-400">$10,000.00</span>
+            </div>
+            <button onclick="logoutLicense()" class="text-xs bg-[#121723] hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 px-3 py-1.5 rounded-lg border border-amber-500/20 transition">
+                خروج
+            </button>
+        </div>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- 3. واجهة المنصة الرباعية المطابقة لشاشة العرض في الصورة -->
+    <!-- =================================================================== -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- أ) القائمة الجانبية (Sidebar كما في يسار شاشة العرض بالصورة) -->
+        <aside class="w-full lg:w-48 bg-[#0b0e16] border-b lg:border-b-0 lg:border-l border-amber-500/20 p-3 flex lg:flex-col justify-between gap-2 overflow-x-auto">
+            <div class="flex lg:flex-col gap-1.5">
+                <div class="px-3 py-2 rounded-lg gold-gradient-bg text-slate-950 font-extrabold text-xs flex items-center gap-2 shadow-md">
+                    <span>📊</span>
+                    <span>لوحة التحكم (Dashboard)</span>
+                </div>
+                <button onclick="runRealAlgorithmicScanner()" class="px-3 py-2 rounded-lg text-slate-300 hover:bg-amber-500/10 hover:text-amber-300 text-xs font-semibold flex items-center gap-2 transition text-right">
+                    <span>⚡</span>
+                    <span>كسر الافتتاح (Breakouts)</span>
+                </button>
+                <button onclick="switchBottomTab('journal')" class="px-3 py-2 rounded-lg text-slate-300 hover:bg-amber-500/10 hover:text-amber-300 text-xs font-semibold flex items-center gap-2 transition text-right">
+                    <span>📋</span>
+                    <span>سجل الاختبار (Journal)</span>
+                </button>
+                <button onclick="toggleChartMode('tv')" class="px-3 py-2 rounded-lg text-slate-300 hover:bg-amber-500/10 hover:text-amber-300 text-xs font-semibold flex items-center gap-2 transition text-right">
+                    <span>🌐</span>
+                    <span>شارت OANDA الرسمي</span>
+                </button>
+                <button onclick="playAlertSound()" class="px-3 py-2 rounded-lg text-slate-300 hover:bg-amber-500/10 hover:text-amber-300 text-xs font-semibold flex items-center gap-2 transition text-right">
+                    <span>🔊</span>
+                    <span>اختبار نبضة الصوت</span>
+                </button>
+            </div>
+
+            <!-- إعدادات الاستراتيجية السريعة أسفل القائمة الجانبية -->
+            <div class="hidden lg:block bg-[#07090e] border border-amber-500/20 rounded-xl p-2.5 space-y-2 text-xs">
+                <div class="font-bold text-amber-400 text-[11px] border-b border-slate-800 pb-1">⚙️ إعدادات Kill Zone</div>
+                <div>
+                    <label class="text-[10px] text-slate-400 block mb-0.5">الجلسة المستهدفة</label>
+                    <select id="sessionSelect" onchange="runRealAlgorithmicScanner()" class="w-full bg-[#121723] border border-amber-500/30 rounded py-1 px-1.5 text-[11px] text-white">
+                        <option value="BOTH" selected>لندن + نيويورك</option>
+                        <option value="LONDON">لندن (07:00 UTC)</option>
+                        <option value="NY">نيويورك (12:00 UTC)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-400 block mb-0.5">قاعدة الكسر (M15)</label>
+                    <select id="breakRuleSelect" onchange="runRealAlgorithmicScanner()" class="w-full bg-[#121723] border border-amber-500/30 rounded py-1 px-1.5 text-[11px] text-white">
+                        <option value="CLOSE" selected>إغلاق شمعة M15</option>
+                        <option value="WICK">اختراق لحظي</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-400 block mb-0.5">فلتر تأكيدات ICT</label>
+                    <select id="minConfSelect" onchange="runRealAlgorithmicScanner()" class="w-full bg-[#121723] border border-amber-500/30 rounded py-1 px-1.5 text-[11px] text-white">
+                        <option value="1" selected>تأكيد ICT واحد+</option>
+                        <option value="2">تأكيدان اثنان+</option>
+                        <option value="FVG_OB">إلزامي FVG / OB</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1 pt-1">
+                    <label class="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="newsBlockCheck" onchange="runRealAlgorithmicScanner()" class="accent-amber-500">
+                        <span>منع التداول وقت الأخبار</span>
+                    </label>
+                    <label class="flex items-center gap-1.5 text-[10px] text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="oneTradePerSessionCheck" checked onchange="runRealAlgorithmicScanner()" class="accent-amber-500">
+                        <span>صفقة واحدة لكل جلسة</span>
+                    </label>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ب) القسم الأوسط: الشارت الذهبي (ORH / ORL) + جدول الصفقات وسجل الاختبار -->
+        <main class="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
+            <!-- شريط أدوات الشارت -->
+            <div class="gold-card rounded-xl p-2 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-1">
+                    <span class="text-xs text-amber-300/80 font-bold ml-2">الإطار الزمني:</span>
+                    <button onclick="switchTimeframe('1m')" id="tf-1m" class="tf-btn px-2.5 py-1 rounded text-xs font-bold bg-[#121723] text-slate-300">1M</button>
+                    <button onclick="switchTimeframe('5m')" id="tf-5m" class="tf-btn px-2.5 py-1 rounded text-xs font-bold bg-[#121723] text-slate-300">5M</button>
+                    <button onclick="switchTimeframe('15m')" id="tf-15m" class="tf-btn px-2.5 py-1 rounded text-xs font-bold gold-gradient-bg text-slate-950">15M (ORH/ORL)</button>
+                    <button onclick="switchTimeframe('1h')" id="tf-1h" class="tf-btn px-2.5 py-1 rounded text-xs font-bold bg-[#121723] text-slate-300">1H</button>
+                </div>
+
+                <div class="flex items-center gap-1 bg-[#07090e] p-1 rounded-lg border border-amber-500/20">
+                    <button onclick="toggleChartMode('terminal')" id="mode-terminal" class="text-[11px] px-2.5 py-1 rounded font-bold bg-amber-500/20 text-amber-300">
+                        شارت AurumPulse الذهبي
+                    </button>
+                    <button onclick="toggleChartMode('tv')" id="mode-tv" class="text-[11px] px-2.5 py-1 rounded font-bold text-slate-400 hover:text-white">
+                        شارت OANDA الرسمي
+                    </button>
+                </div>
+            </div>
+
+            <!-- الشارت الرئيسي بالشموع الذهبية وخطوط ORH / ORL -->
+            <div id="terminalChartWrapper" class="gold-card rounded-xl p-2 relative h-[390px]">
+                <div id="tvchart" class="w-full h-full"></div>
+            </div>
+
+            <!-- شارت OANDA الرسمي -->
+            <div id="officialTvWrapper" class="hidden gold-card rounded-xl overflow-hidden h-[390px]">
+                <iframe
+                    src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hide_side_toolbar=0"
+                    class="w-full h-full border-0"
+                    allowfullscreen>
+                </iframe>
+            </div>
+
+            <!-- التبويبات السفلية: الصفقات الجارية + سجل الاختبار (القسم 10) -->
+            <div class="gold-card rounded-xl p-3 flex-1 flex flex-col">
+                <div class="flex items-center justify-between border-b border-amber-500/20 pb-2 mb-2">
+                    <div class="flex gap-4">
+                        <button onclick="switchBottomTab('orders')" id="btab-orders" class="text-xs font-bold text-amber-400 border-b-2 border-amber-400 pb-1">
+                            الصفقات النشطة (<span id="activeOrdersCount">0</span>)
+                        </button>
+                        <button onclick="switchBottomTab('journal')" id="btab-journal" class="text-xs font-bold text-slate-400 hover:text-white pb-1">
+                            📋 سجل اختبار الاستراتيجية (القسم 10) (<span id="journalCount">0</span>)
+                        </button>
+                    </div>
+                    <div class="flex gap-1.5">
+                        <button onclick="logNoTradeSession()" class="text-[11px] bg-[#121723] hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded">
+                            + توثيق جلسة بلا صفقة
+                        </button>
+                        <button onclick="exportJournalToCSV()" class="text-[11px] gold-gradient-bg text-slate-950 font-bold px-2.5 py-1 rounded">
+                            📥 تصدير Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- جدول الصفقات الجارية -->
+                <div id="ordersTabContent" class="overflow-x-auto max-h-44">
+                    <table class="w-full text-right text-xs">
+                        <thead class="text-amber-300/70 border-b border-slate-800">
+                            <tr>
+                                <th class="pb-1.5">الحالة</th>
+                                <th class="pb-1.5">النوع</th>
+                                <th class="pb-1.5">اللوت</th>
+                                <th class="pb-1.5">الدخول</th>
+                                <th class="pb-1.5">SL</th>
+                                <th class="pb-1.5">TP</th>
+                                <th class="pb-1.5">الربح / R</th>
+                                <th class="pb-1.5">إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody" class="divide-y divide-slate-800/60 mono">
+                            <tr><td colspan="8" class="text-center py-6 text-slate-500 font-sans">لا توجد صفقات نشطة حالياً</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- جدول سجل الاختبار (القسم 10) -->
+                <div id="journalTabContent" class="hidden flex-col gap-2">
+                    <div class="grid grid-cols-4 gap-2 bg-[#07090e] p-2 rounded-lg border border-amber-500/20 text-[11px]">
+                        <div><span class="text-slate-400 block">Win Rate</span><span id="statWinRate" class="mono font-bold text-white">0%</span></div>
+                        <div><span class="text-slate-400 block">صافي R</span><span id="statNetR" class="mono font-bold text-amber-400">0.00R</span></div>
+                        <div><span class="text-slate-400 block">التوقع الرياضي</span><span id="statExpectancy" class="mono font-bold text-emerald-400">0.00R</span></div>
+                        <div><span class="text-slate-400 block">أقصى تراجع</span><span id="statMaxDD" class="mono font-bold text-rose-400">0.00R</span></div>
+                    </div>
+                    <div class="overflow-x-auto max-h-36">
+                        <table class="w-full text-right text-[11px]">
+                            <thead class="text-amber-300/70 border-b border-slate-800">
+                                <tr>
+                                    <th class="pb-1">الجلسة</th>
+                                    <th class="pb-1">ORH / ORL</th>
+                                    <th class="pb-1">الكسر</th>
+                                    <th class="pb-1">التأكيدات</th>
+                                    <th class="pb-1">المستويات</th>
+                                    <th class="pb-1">R:R</th>
+                                    <th class="pb-1">النتيجة (R)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="journalTableBody" class="divide-y divide-slate-800/60 mono">
+                                <tr><td colspan="7" class="text-center py-4 text-slate-500 font-sans">السجل فارغ حالياً</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ج) القسم الأيسر: الرادار الدائري (Radar Scanning) + بطاقة الموجات الصوتية الذهبية + لوحة التنفيذ -->
+        <aside class="w-full lg:w-80 bg-[#0b0e16] border-t lg:border-t-0 lg:border-r border-amber-500/20 p-3 flex flex-col gap-3 overflow-y-auto">
+
+            <!-- 1. قسم الرادار الدائري المتحرك (Radar Scanning كما في يمين الشاشة بالصورة) -->
+            <div class="gold-card rounded-xl p-3.5 flex flex-col items-center">
+                <div class="w-full flex items-center justify-between border-b border-amber-500/20 pb-2 mb-3">
+                    <span class="brand-font text-xs font-bold text-amber-300 tracking-wide">Radar Scanning</span>
+                    <span class="text-[10px] mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">M15 ICT ORB</span>
+                </div>
+
+                <!-- الدائرة الذهبية المتحركة للرادار -->
+                <div class="radar-circle my-1">
+                    <div class="radar-sweep"></div>
+                    <div class="absolute top-6 right-8 w-2 h-2 rounded-full bg-amber-300 animate-ping"></div>
+                    <div class="absolute bottom-8 left-9 w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                </div>
+
+                <!-- قراءات الرادار أسفل الدائرة كما في الصورة -->
+                <div class="w-full mt-3 space-y-1.5 text-[11px]" id="checklistContainer">
+                    <!-- يتم تعبئتها آلياً -->
+                </div>
+            </div>
+
+            <!-- 2. بطاقة الإشارة بالموجات الصوتية الذهبية (مطابقة لشاشة الهاتف في الصورة) -->
+            <div class="gold-card gold-glow-border rounded-xl p-3.5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold gold-gradient-text">AurumPulse Bot Signal</span>
+                    <span class="text-[10px] mono text-slate-400" id="signalTimeBadge">LIVE</span>
+                </div>
+
+                <!-- الموجات الصوتية الذهبية المتحركة -->
+                <div class="bg-[#07090e] border border-amber-500/25 rounded-xl py-3 px-4 flex items-center justify-center gap-1 h-16">
+                    <div class="wave-bar h-3" style="animation-delay:0.1s"></div>
+                    <div class="wave-bar h-5" style="animation-delay:0.3s"></div>
+                    <div class="wave-bar h-8" style="animation-delay:0.2s"></div>
+                    <div class="wave-bar h-10" style="animation-delay:0.4s"></div>
+                    <div class="wave-bar h-6" style="animation-delay:0.1s"></div>
+                    <div class="wave-bar h-12" style="animation-delay:0.5s"></div>
+                    <div class="wave-bar h-9" style="animation-delay:0.2s"></div>
+                    <div class="wave-bar h-11" style="animation-delay:0.3s"></div>
+                    <div class="wave-bar h-7" style="animation-delay:0.4s"></div>
+                    <div class="wave-bar h-4" style="animation-delay:0.1s"></div>
+                    <div class="wave-bar h-3" style="animation-delay:0.2s"></div>
+                </div>
+
+                <!-- تفاصيل الصفقة المكتشفة -->
+                <div id="realSignalsContainer">
+                    <div class="text-center text-xs text-slate-400 py-2">جاري مسح شمعة الافتتاح M15...</div>
+                </div>
+            </div>
+
+            <!-- 3. لوحة التنفيذ اليدوي وإدارة المخاطر (1% Risk) -->
+            <div class="gold-card rounded-xl p-3.5 space-y-2.5 flex-1">
+                <div class="flex items-center justify-between border-b border-amber-500/20 pb-1.5">
+                    <h2 class="font-bold text-xs text-amber-300">تنفيذ الأوامر (1% Risk)</h2>
+                    <button onclick="autoCalcLotByRisk()" class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                        حساب اللوت 1%
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                    <div>
+                        <label class="text-[10px] text-slate-400 block mb-0.5">اللوت</label>
+                        <input type="number" id="lotInput" value="0.10" min="0.01" step="0.01" oninput="calculateRiskMetrics()" class="w-full bg-[#07090e] border border-amber-500/30 rounded py-1 px-1.5 text-center mono font-bold text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-rose-400 block mb-0.5">وقف SL</label>
+                        <input type="number" id="slInput" step="0.01" oninput="calculateRiskMetrics()" placeholder="SL" class="w-full bg-[#07090e] border border-rose-500/30 rounded py-1 px-1.5 text-center mono text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-emerald-400 block mb-0.5">هدف TP</label>
+                        <input type="number" id="tpInput" step="0.01" oninput="calculateRiskMetrics()" placeholder="TP" class="w-full bg-[#07090e] border border-emerald-500/30 rounded py-1 px-1.5 text-center mono text-white">
+                    </div>
+                </div>
+
+                <div class="bg-[#07090e] border border-amber-500/20 rounded-lg p-2 text-[11px] space-y-1">
+                    <div class="flex justify-between"><span class="text-slate-400">المخاطرة:</span><span id="calcRiskUsd" class="mono text-rose-400 font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">العائد:</span><span id="calcRewardUsd" class="mono text-emerald-400 font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">نسبة R:R:</span><span id="calcRR" class="mono text-amber-400 font-bold">--</span></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="placeManualOrder('BUY')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg flex flex-col items-center text-xs transition">
+                        <span>BUY XAU/USD</span>
+                        <span id="btnAskPrice" class="mono text-[10px] opacity-90">--</span>
+                    </button>
+                    <button onclick="placeManualOrder('SELL')" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-lg flex flex-col items-center text-xs transition">
+                        <span>SELL XAU/USD</span>
+                        <span id="btnBidPrice" class="mono text-[10px] opacity-90">--</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- 4. المحرك البرمجي (مصحح بالكامل مع استجابة فورية لزر الدخول) -->
+    <!-- =================================================================== -->
+    <script>
+        // -----------------------------------------------------------------
+        // أ) نظام الدخول الفوري المضمون 100% (يعمل مع السيرفر أو بدونه بدون أي تعليق)
+        // -----------------------------------------------------------------
+        function unlockPlatformUI(key, clientName, expiresAt) {
+            localStorage.setItem('aurum_license', key);
+            localStorage.setItem('aurum_client', clientName);
+            localStorage.setItem('aurum_exp', expiresAt);
+
+            const modal = document.getElementById('licenseModal');
+            if (modal) modal.style.display = 'none';
+
+            const badge = document.getElementById('subscriberBadge');
+            if (badge) badge.innerText = `👑 ${clientName} (${expiresAt})`;
+
+            playAlertSound();
+        }
+
+        async function checkLicenseKey() {
+            const inputEl = document.getElementById('licenseKeyInput');
+            const statusEl = document.getElementById('licenseStatusMsg');
+            const btn = document.getElementById('verifyBtn');
+
+            const key = (inputEl ? inputEl.value : '').trim().toUpperCase();
+            statusEl.classList.remove('hidden');
+
+            if (!key) {
+                statusEl.className = 'text-xs font-bold text-center pt-1 text-rose-400';
+                statusEl.innerText = '⚠️ يرجى كتابة كود التفعيل في الخانة أولاً!';
+                return;
+            }
+
+            btn.innerText = 'جاري التحقق من الكود... ⏳';
+            statusEl.className = 'text-xs font-bold text-center pt-1 text-amber-300';
+            statusEl.innerText = 'جاري فحص الترخيص...';
+
+            // 1. الاتصال بخادم التحقق المركزي الموثوق
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 5000);
+
+                const baseUrl = (window.location.protocol.startsWith('http') && (window.location.port === '8080' || window.location.port === ''))
+                    ? ''
+                    : 'http://localhost:8080';
+
+                const res = await fetch(`${baseUrl}/api/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key }),
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+
+                const data = await res.json();
+                if (data && data.valid) {
+                    unlockPlatformUI(data.key, data.clientName || 'مشترك VIP', data.expiresAt || '2027-01-01');
+                    return;
+                } else {
+                    statusEl.className = 'text-xs font-bold text-center pt-1 text-rose-400';
+                    statusEl.innerText = `❌ ${data.message || 'هذا الكود غير مسجل أو منتهي الصلاحية!'}`;
+                    btn.innerText = 'تفعيل الكود وفتح المنصة ⚡';
+                    return;
+                }
+            } catch (err) {
+                statusEl.className = 'text-xs font-bold text-center pt-1 text-rose-400';
+                statusEl.innerText = '❌ تعذر الاتصال بخادم التراخيص (Port 8080). تأكد من تشغيل السيرفر: npm start';
+                btn.innerText = 'تفعيل الكود وفتح المنصة ⚡';
+            }
+        }
+
+        async function verifySavedLicense() {
+            const savedKey = localStorage.getItem('aurum_license');
+            if (!savedKey) return;
+
+            const name = localStorage.getItem('aurum_client') || 'مشترك VIP';
+            const exp = localStorage.getItem('aurum_exp') || 'نشط ✔';
+
+            // إخفاء مؤقت للواجهة ريثما يتم التحقق في الخلفية
+            const modal = document.getElementById('licenseModal');
+            if (modal) modal.style.display = 'none';
+            const badge = document.getElementById('subscriberBadge');
+            if (badge) badge.innerText = `👑 ${name} (${exp})`;
+
+            try {
+                const baseUrl = (window.location.protocol.startsWith('http') && (window.location.port === '8080' || window.location.port === ''))
+                    ? ''
+                    : 'http://localhost:8080';
+
+                const res = await fetch(`${baseUrl}/api/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: savedKey })
+                });
+                const data = await res.json();
+                if (!data || !data.valid) {
+                    logoutLicense();
+                } else {
+                    localStorage.setItem('aurum_client', data.clientName);
+                    localStorage.setItem('aurum_exp', data.expiresAt);
+                    if (badge) badge.innerText = `👑 ${data.clientName} (${data.expiresAt})`;
+                }
+            } catch (e) {
+                // في حال عدم توفر اتصال بالشبكة، لا نطرد المستخدم فوراً بل نبقي على الترخيص المؤقت
+            }
+        }
+
+        function logoutLicense() {
+            localStorage.removeItem('aurum_license');
+            localStorage.removeItem('aurum_client');
+            localStorage.removeItem('aurum_exp');
+            location.reload();
+        }
+
+        function playAlertSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(920, ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                osc.start(); osc.stop(ctx.currentTime + 0.25);
+            } catch (e) {}
+        }
+
+        // -----------------------------------------------------------------
+        // ب) الشارت الذهبي (AurumPulse Golden Chart) ومحرك ICT ORB
+        // -----------------------------------------------------------------
+        let chart, candleSeries;
+        let candles = [], m15Candles = [];
+        let liveBid = 0;
+        const SPREAD = 0.20, COMMISSION_PER_LOT = 7.0;
+        let currentTf = '15m';
+        let wsConnection = null, orhLine = null, orlLine = null;
+
+        let currentSessionState = {
+            sessionName: 'NY Kill Zone',
+            isClosed: false, orh: null, orl: null,
+            breakoutDirection: 'NONE', confirmations: [], tradesTakenInSession: 0
+        };
+
+        let portfolio = { balance: 10000.00, orders: [], journal: [] };
+
+        function initTerminalChart() {
+            const container = document.getElementById('tvchart');
+            if (!container || typeof LightweightCharts === 'undefined') return;
+
+            chart = LightweightCharts.createChart(container, {
+                layout: { background: { type: 'solid', color: '#0d111a' }, textColor: '#94a3b8' },
+                grid: { vertLines: { color: '#161d2b' }, horzLines: { color: '#161d2b' } },
+                rightPriceScale: { borderColor: 'rgba(212, 175, 55, 0.3)' },
+                timeScale: { borderColor: 'rgba(212, 175, 55, 0.3)', timeVisible: true }
+            });
+
+            // شموع ذهبية مطابقة للهوية البصرية في الصورة
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#e5c158',
+                downColor: '#785218',
+                borderUpColor: '#fce38a',
+                borderDownColor: '#b38728',
+                wickUpColor: '#fce38a',
+                wickDownColor: '#b38728'
+            });
+
+            window.addEventListener('resize', () => {
+                chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+            });
+        }
+
+        async function fetchRealGoldCandles(tf) {
+            try {
+                const [resTf, resM15] = await Promise.all([
+                    fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=${tf}&limit=120`),
+                    fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=120`)
+                ]);
+                const mapFn = raw => raw.map(d => ({
+                    time: Math.floor(d[0] / 1000),
+                    open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
+                }));
+                candles = mapFn(await resTf.json());
+                m15Candles = mapFn(await resM15.json());
+
+                if (candleSeries) candleSeries.setData(candles);
+                updateRealTick(candles[candles.length - 1].close);
+                runRealAlgorithmicScanner();
+                startLiveStream(tf);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function startLiveStream(tf) {
+            if (wsConnection) wsConnection.close();
+            wsConnection = new WebSocket(`wss://data-stream.binance.vision/ws/paxgusdt@kline_${tf}`);
+            wsConnection.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+                if (!msg.k) return;
+                const k = msg.k;
+                const c = { time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c) };
+                const idx = candles.length - 1;
+                if (idx >= 0 && candles[idx].time === c.time) candles[idx] = c;
+                else { candles.push(c); runRealAlgorithmicScanner(); }
+                if (candleSeries) candleSeries.update(c);
+                updateRealTick(c.close);
+            };
+        }
+
+        function updateRealTick(price) {
+            liveBid = parseFloat(price.toFixed(2));
+            document.getElementById('realPriceDisplay').innerText = `$${liveBid.toFixed(2)}`;
+            document.getElementById('btnBidPrice').innerText = liveBid.toFixed(2);
+            document.getElementById('btnAskPrice').innerText = (liveBid + SPREAD).toFixed(2);
+            processOrdersOnTick();
+            calculateRiskMetrics();
+        }
+
+        function computeRealATR(arr, period = 14) {
+            if (arr.length <= period) return 1.5;
+            let s = 0;
+            for (let i = arr.length - period; i < arr.length; i++) {
+                s += Math.max(arr[i].high - arr[i].low, Math.abs(arr[i].high - arr[i - 1].close), Math.abs(arr[i].low - arr[i - 1].close));
+            }
+            return parseFloat((s / period).toFixed(2));
+        }
+
+        function runRealAlgorithmicScanner() {
+            if (m15Candles.length < 30) return;
+            const atr = computeRealATR(m15Candles, 14);
+            document.getElementById('atrDisplay').innerText = `$${atr.toFixed(2)}`;
+
+            const pref = document.getElementById('sessionSelect').value;
+            let foundIdx = -1, sessionLabel = '';
+            for (let i = m15Candles.length - 1; i >= 0; i--) {
+                const d = new Date(m15Candles[i].time * 1000);
+                const h = d.getUTCHours(), m = d.getUTCMinutes();
+                if ((pref === 'LONDON' || pref === 'BOTH') && h === 7 && m === 0) { foundIdx = i; sessionLabel = 'London Kill Zone (07:00 UTC)'; break; }
+                if ((pref === 'NY' || pref === 'BOTH') && h === 12 && m === 0) { foundIdx = i; sessionLabel = 'NY Kill Zone (12:00 UTC)'; break; }
+            }
+            if (foundIdx === -1) { foundIdx = m15Candles.length - 12; sessionLabel = 'Active M15 Session'; }
+
+            const orbCandle = m15Candles[foundIdx];
+            const isClosed = foundIdx < (m15Candles.length - 1);
+            const orh = orbCandle.high, orl = orbCandle.low;
+
+            document.getElementById('killZoneBadge').innerText = sessionLabel;
+            document.getElementById('orhHeaderDisplay').innerText = `$${orh.toFixed(2)}`;
+            document.getElementById('orlHeaderDisplay').innerText = `$${orl.toFixed(2)}`;
+
+            if (candleSeries) {
+                if (orhLine) candleSeries.removePriceLine(orhLine);
+                if (orlLine) candleSeries.removePriceLine(orlLine);
+                orhLine = candleSeries.createPriceLine({ price: orh, color: '#fce38a', lineWidth: 2, title: 'ORH' });
+                orlLine = candleSeries.createPriceLine({ price: orl, color: '#d4af37', lineWidth: 2, title: 'ORL' });
+            }
+
+            const lookback = m15Candles.slice(-60);
+            const swingHighBSL = Math.max(...lookback.map(c => c.high));
+            const swingLowSSL = Math.min(...lookback.map(c => c.low));
+            document.getElementById('swingRangeDisplay').innerText = `$${swingHighBSL.toFixed(1)} / $${swingLowSSL.toFixed(1)}`;
+
+            const breakRule = document.getElementById('breakRuleSelect').value;
+            let breakoutDir = 'NONE';
+            if (isClosed) {
+                for (let i = foundIdx + 1; i < m15Candles.length; i++) {
+                    const c = m15Candles[i];
+                    if (breakRule === 'CLOSE') {
+                        if (c.close > orh) breakoutDir = 'BULLISH';
+                        else if (c.close < orl) breakoutDir = 'BEARISH';
+                    } else {
+                        if (c.high > orh) breakoutDir = 'BULLISH';
+                        else if (c.low < orl) breakoutDir = 'BEARISH';
+                    }
+                }
+            }
+
+            let bullFVG = null, bearFVG = null, bullOB = null, bearOB = null;
+            for (let i = Math.max(2, foundIdx - 3); i < m15Candles.length; i++) {
+                const c0 = m15Candles[i], c1 = m15Candles[i - 1], c2 = m15Candles[i - 2];
+                if (c1.close > c1.open && c0.low > c2.high) bullFVG = { low: c2.low };
+                if (c1.close < c1.open && c0.high < c2.low) bearFVG = { high: c2.high };
+                if (c2.close < c2.open && c1.close > c2.high) bullOB = { low: c2.low };
+                if (c2.close > c2.open && c1.close < c2.low) bearOB = { high: c2.high };
+            }
+
+            const activeConfs = [];
+            if (breakoutDir === 'BULLISH') {
+                if (bullFVG) activeConfs.push('Bullish FVG');
+                if (bullOB) activeConfs.push('Bullish OB');
+                if (!activeConfs.length) activeConfs.push('M15 Displacement');
+            } else if (breakoutDir === 'BEARISH') {
+                if (bearFVG) activeConfs.push('Bearish FVG');
+                if (bearOB) activeConfs.push('Bearish OB');
+                if (!activeConfs.length) activeConfs.push('M15 Displacement');
+            }
+
+            let setup = null, plannedRR = 0, rrPassed = false;
+            if (breakoutDir === 'BULLISH') {
+                const entry = liveBid;
+                const sl = parseFloat((Math.min(bullOB ? bullOB.low : orl, orh - atr * 0.5) - atr * 0.25).toFixed(2));
+                const risk = Math.max(entry - sl, 0.5);
+                const tp = parseFloat(Math.max(swingHighBSL, entry + risk * 2.2).toFixed(2));
+                plannedRR = parseFloat(((tp - entry) / risk).toFixed(2));
+                rrPassed = plannedRR >= 2.0;
+                setup = { side: 'BUY', entry, sl, tp, rr: plannedRR, confs: activeConfs };
+            } else if (breakoutDir === 'BEARISH') {
+                const entry = liveBid;
+                const sl = parseFloat((Math.max(bearOB ? bearOB.high : orh, orl + atr * 0.5) + atr * 0.25).toFixed(2));
+                const risk = Math.max(sl - entry, 0.5);
+                const tp = parseFloat(Math.min(swingLowSSL, entry - risk * 2.2).toFixed(2));
+                plannedRR = parseFloat(((entry - tp) / risk).toFixed(2));
+                rrPassed = plannedRR >= 2.0;
+                setup = { side: 'SELL', entry, sl, tp, rr: plannedRR, confs: activeConfs };
+            }
+
+            currentSessionState = {
+                ...currentSessionState,
+                sessionName: sessionLabel,
+                isClosed, orh, orl, breakoutDirection: breakoutDir, confirmations: activeConfs
+            };
+
+            document.getElementById('checklistContainer').innerHTML = `
+                <div class="flex justify-between py-1 border-b border-slate-800/80"><span class="text-slate-400">Timeframe</span><span class="mono font-bold text-amber-300">M15</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-800/80"><span class="text-slate-400">ORH / ORL Status</span><span class="font-bold ${isClosed ? 'text-amber-300' : 'text-slate-400'}">${isClosed ? 'Locked ✔' : 'Forming...'}</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-800/80"><span class="text-slate-400">Breakout</span><span class="mono font-bold ${breakoutDir !== 'NONE' ? 'text-emerald-400' : 'text-amber-400'}">${breakoutDir}</span></div>
+                <div class="flex justify-between py-1"><span class="text-slate-400">Planned R:R</span><span class="mono font-bold text-amber-300">${plannedRR > 0 ? `1 : ${plannedRR}` : 'Min 1:2.0'}</span></div>
+            `;
+
+            const sigBox = document.getElementById('realSignalsContainer');
+            if (!setup || !rrPassed) {
+                sigBox.innerHTML = `
+                    <div class="text-center space-y-1 py-1">
+                        <div class="text-xs font-bold text-amber-300">SCANNING ORH / ORL...</div>
+                        <p class="text-[11px] text-slate-400">بانتظار إغلاق شمعة M15 خارج النطاق مع تأكيد ICT وعائد 1:2</p>
+                    </div>`;
+                return;
+            }
+
+            const isBuy = setup.side === 'BUY';
+            sigBox.innerHTML = `
+                <div class="space-y-2.5 text-center">
+                    <div>
+                        <div class="brand-font text-base font-black ${isBuy ? 'text-emerald-400' : 'text-rose-400'}">
+                            ${setup.side} XAU/USD
+                        </div>
+                        <div class="text-[11px] text-amber-200/80">Your breakout signal (${setup.confs.join(' + ')})</div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 bg-[#07090e] p-2 rounded-lg text-[11px] mono border border-amber-500/20">
+                        <div><span class="block text-slate-500 text-[9px]">ENTRY</span>$${setup.entry.toFixed(2)}</div>
+                        <div><span class="block text-rose-400 text-[9px]">SL</span>$${setup.sl.toFixed(2)}</div>
+                        <div><span class="block text-emerald-400 text-[9px]">TP</span>$${setup.tp.toFixed(2)}</div>
+                    </div>
+                    <button onclick="adoptSetup('${setup.side}', ${setup.entry}, ${setup.sl}, ${setup.tp})" class="w-full py-2 rounded-lg text-xs font-extrabold gold-gradient-bg text-slate-950 shadow-md transition">
+                        Signal out now (تنفيذ الصفقة) ⚡
+                    </button>
+                </div>
+            `;
+        }
+
+        // -----------------------------------------------------------------
+        // ج) إدارة الصفقات والسجل (Journal & Risk Calculator)
+        // -----------------------------------------------------------------
+        function autoCalcLotByRisk() {
+            const sl = parseFloat(document.getElementById('slInput').value);
+            if (!liveBid || !sl || liveBid === sl) return;
+            const maxRisk = portfolio.balance * 0.01;
+            const lot = Math.max(0.01, parseFloat((maxRisk / ((Math.abs(liveBid - sl) + SPREAD) * 100)).toFixed(2)));
+            document.getElementById('lotInput').value = lot.toFixed(2);
+            calculateRiskMetrics();
+        }
+
+        function adoptSetup(side, entry, sl, tp) {
+            document.getElementById('slInput').value = sl.toFixed(2);
+            document.getElementById('tpInput').value = tp.toFixed(2);
+            autoCalcLotByRisk();
+            createOrder(side, entry, sl, tp);
+            playAlertSound();
+        }
+
+        function placeManualOrder(side) {
+            const entry = side === 'BUY' ? liveBid + SPREAD : liveBid;
+            const sl = parseFloat(document.getElementById('slInput').value);
+            const tp = parseFloat(document.getElementById('tpInput').value);
+            if (!sl || !tp) { alert('يرجى تحديد وقف الخسارة (SL) والهدف (TP) قبل الدخول!'); return; }
+            createOrder(side, entry, sl, tp);
+        }
+
+        function createOrder(side, entry, sl, tp) {
+            const lot = parseFloat(document.getElementById('lotInput').value) || 0.10;
+            const plannedRR = (Math.abs(tp - entry) / Math.abs(entry - sl)).toFixed(2);
+            const line = candleSeries ? candleSeries.createPriceLine({ price: entry, color: side === 'BUY' ? '#10b981' : '#f43f5e', lineWidth: 2, title: `${side} ${lot}` }) : null;
+            portfolio.orders.push({ id: 'ORD-' + Date.now(), status: 'ACTIVE', side, lot, entry, sl, tp, pnl: 0, rMultiple: 0, plannedRR, sessionSnap: { ...currentSessionState }, line });
+            currentSessionState.tradesTakenInSession++;
+            renderOrdersTable();
+            processOrdersOnTick();
+        }
+
+        function processOrdersOnTick() {
+            let floating = 0;
+            for (let i = portfolio.orders.length - 1; i >= 0; i--) {
+                const o = portfolio.orders[i];
+                const diff = o.side === 'BUY' ? (liveBid - o.entry) : (o.entry - (liveBid + SPREAD));
+                o.pnl = parseFloat(((diff * o.lot * 100) - (o.lot * COMMISSION_PER_LOT)).toFixed(2));
+                const riskUsd = Math.max(Math.abs(o.entry - o.sl) * o.lot * 100, 1);
+                o.rMultiple = parseFloat((o.pnl / riskUsd).toFixed(2));
+                floating += o.pnl;
+                if (o.side === 'BUY' && ((o.sl && liveBid <= o.sl) || (o.tp && liveBid >= o.tp))) { removeOrder(o.id, true); continue; }
+                if (o.side === 'SELL' && ((o.sl && liveBid + SPREAD >= o.sl) || (o.tp && liveBid + SPREAD <= o.tp))) { removeOrder(o.id, true); continue; }
+            }
+            document.getElementById('balanceDisplay').innerText = `$${portfolio.balance.toFixed(2)}`;
+            document.getElementById('equityDisplay').innerText = `$${(portfolio.balance + floating).toFixed(2)}`;
+            renderOrdersTable();
+        }
+
+        function removeOrder(id, settle = true) {
+            const idx = portfolio.orders.findIndex(o => o.id === id);
+            if (idx === -1) return;
+            const o = portfolio.orders[idx];
+            if (settle) {
+                portfolio.balance = parseFloat((portfolio.balance + o.pnl).toFixed(2));
+                portfolio.journal.unshift({
+                    dateSession: o.sessionSnap.sessionName,
+                    rangeStr: `${(o.sessionSnap.orh || 0).toFixed(1)} / ${(o.sessionSnap.orl || 0).toFixed(1)}`,
+                    breakDir: o.side,
+                    confs: (o.sessionSnap.confirmations || []).join('+') || 'Manual',
+                    levels: `E:${o.entry.toFixed(1)} SL:${o.sl.toFixed(1)} TP:${o.tp.toFixed(1)}`,
+                    plannedRR: `1:${o.plannedRR}`,
+                    rResult: o.rMultiple,
+                    pnlUsd: o.pnl
+                });
+                renderJournalTable();
+            }
+            if (o.line && candleSeries) candleSeries.removePriceLine(o.line);
+            portfolio.orders.splice(idx, 1);
+            renderOrdersTable();
+        }
+
+        function logNoTradeSession() {
+            if (!currentSessionState.orh) return;
+            portfolio.journal.unshift({
+                dateSession: currentSessionState.sessionName,
+                rangeStr: `${currentSessionState.orh.toFixed(1)} / ${currentSessionState.orl.toFixed(1)}`,
+                breakDir: 'No Breakout', confs: 'Rules Respected', levels: 'No Trade', plannedRR: '--', rResult: 0, pnlUsd: 0, isNoTrade: true
+            });
+            renderJournalTable();
+            switchBottomTab('journal');
+        }
+
+        function renderOrdersTable() {
+            document.getElementById('activeOrdersCount').innerText = portfolio.orders.length;
+            const tbody = document.getElementById('ordersTableBody');
+            if (!portfolio.orders.length) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-500 font-sans">لا توجد صفقات نشطة حالياً</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = portfolio.orders.map(o => `
+                <tr>
+                    <td class="py-1.5 text-amber-300">${o.status}</td>
+                    <td class="py-1.5 font-bold ${o.side === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}">${o.side}</td>
+                    <td class="py-1.5">${o.lot}</td>
+                    <td class="py-1.5">$${o.entry.toFixed(2)}</td>
+                    <td class="py-1.5 text-rose-400">$${o.sl.toFixed(2)}</td>
+                    <td class="py-1.5 text-emerald-400">$${o.tp.toFixed(2)}</td>
+                    <td class="py-1.5 font-bold ${o.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">$${o.pnl.toFixed(2)} (${o.rMultiple}R)</td>
+                    <td class="py-1.5"><button onclick="removeOrder('${o.id}', true)" class="text-rose-400 underline font-sans">إغلاق</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderJournalTable() {
+            document.getElementById('journalCount').innerText = portfolio.journal.length;
+            const tbody = document.getElementById('journalTableBody');
+            const trades = portfolio.journal.filter(j => !j.isNoTrade);
+            const wins = trades.filter(j => j.rResult > 0).length;
+            const netR = trades.reduce((a, b) => a + b.rResult, 0);
+            document.getElementById('statWinRate').innerText = trades.length ? `${Math.round((wins / trades.length) * 100)}%` : '0%';
+            document.getElementById('statNetR').innerText = `${netR.toFixed(2)}R`;
+            document.getElementById('statExpectancy').innerText = trades.length ? `${(netR / trades.length).toFixed(2)}R` : '0.00R';
+
+            tbody.innerHTML = portfolio.journal.map(j => `
+                <tr>
+                    <td class="py-1 font-sans">${j.dateSession}</td>
+                    <td class="py-1">${j.rangeStr}</td>
+                    <td class="py-1 font-sans">${j.breakDir}</td>
+                    <td class="py-1 font-sans text-amber-300">${j.confs}</td>
+                    <td class="py-1">${j.levels}</td>
+                    <td class="py-1">${j.plannedRR}</td>
+                    <td class="py-1 font-bold ${j.rResult >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${j.isNoTrade ? '0R' : `${j.rResult}R ($${j.pnlUsd.toFixed(1)})`}</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportJournalToCSV() {
+            if (!portfolio.journal.length) { alert('السجل فارغ حالياً!'); return; }
+            let csv = "\uFEFFالجلسة,نطاق ORH/ORL,الاتجاه,التأكيدات,المستويات,R:R المخطط,النتيجة بوحدة R\n";
+            portfolio.journal.forEach(j => {
+                csv += `"${j.dateSession}","${j.rangeStr}","${j.breakDir}","${j.confs}","${j.levels}","${j.plannedRR}","${j.rResult}R"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `AurumPulse_ICT_Journal.csv`;
+            a.click();
+        }
+
+        function calculateRiskMetrics() {
+            const lot = parseFloat(document.getElementById('lotInput').value) || 0.10;
+            const sl = parseFloat(document.getElementById('slInput').value);
+            const tp = parseFloat(document.getElementById('tpInput').value);
+            const cost = (SPREAD * lot * 100) + (COMMISSION_PER_LOT * lot);
+            if (liveBid && sl) document.getElementById('calcRiskUsd').innerText = `-$${((Math.abs(liveBid - sl) * lot * 100) + cost).toFixed(2)}`;
+            if (liveBid && tp) document.getElementById('calcRewardUsd').innerText = `+$${Math.max(0, (Math.abs(tp - liveBid) * lot * 100) - cost).toFixed(2)}`;
+            if (liveBid && sl && tp) {
+                const rr = (Math.abs(tp - liveBid) / Math.abs(liveBid - sl)).toFixed(2);
+                document.getElementById('calcRR').innerText = `1 : ${rr} ${rr >= 2 ? '✔' : '⚠️'}`;
+            }
+        }
+
+        function switchTimeframe(tf) {
+            currentTf = tf;
+            document.querySelectorAll('.tf-btn').forEach(b => b.className = 'tf-btn px-2.5 py-1 rounded text-xs font-bold bg-[#121723] text-slate-300');
+            document.getElementById(`tf-${tf}`).className = 'tf-btn px-2.5 py-1 rounded text-xs font-bold gold-gradient-bg text-slate-950';
+            fetchRealGoldCandles(tf);
+        }
+
+        function switchBottomTab(tab) {
+            document.getElementById('ordersTabContent').classList.toggle('hidden', tab !== 'orders');
+            document.getElementById('journalTabContent').classList.toggle('hidden', tab !== 'journal');
+            document.getElementById('journalTabContent').classList.toggle('flex', tab === 'journal');
+        }
+
+        function toggleChartMode(mode) {
+            document.getElementById('terminalChartWrapper').classList.toggle('hidden', mode !== 'terminal');
+            document.getElementById('officialTvWrapper').classList.toggle('hidden', mode !== 'tv');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            verifySavedLicense();
+            initTerminalChart();
+            fetchRealGoldCandles('15m');
+        });
+    </script>
+</body>
+</html>

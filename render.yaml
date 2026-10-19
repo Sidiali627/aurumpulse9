@@ -1,0 +1,32 @@
+# ============================================================================
+# AurumPulse ICT — Render Deployment Blueprint (Demo Mode)
+# Safe, isolated web service deployment with zero leaked secrets.
+# ============================================================================
+services:
+  - type: web
+    name: aurumpulse-ict-demo
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: node bot_engine.js
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DEMO_MODE
+        value: "true"
+      - key: ADMIN_CONTACT_USER
+        value: "@alpha34"
+      # Secrets are marked sync: false to prompt manual entry in Render Dashboard
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: ADMIN_CHAT_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false

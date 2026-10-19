@@ -1,0 +1,26 @@
+{
+  "name": "aurumpulse-ict",
+  "version": "5.0.0",
+  "description": "AurumPulse ICT - XAU/USD M15 ORB Institutional Radar",
+  "main": "bot_engine.js",
+  "scripts": {
+    "start": "node bot_engine.js",
+    "test": "node tests/run_all_tests.js",
+    "test:phase1": "node tests/test_security.js",
+    "test:phase2": "node tests/test_phase2_integrity.js",
+    "test:phase3": "node tests/test_phase3_strategy.js",
+    "test:phase4": "node tests/test_phase4_backtest.js",
+    "test:render": "node tests/test_render_deployment.js",
+    "test:all": "node tests/run_all_tests.js",
+    "migrate:pg": "node scripts/migrate_to_postgres.js",
+    "rollback:pg": "node scripts/rollback_from_postgres.js",
+    "backtest": "node scripts/backtest_orb_ict.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^2.1.0",
+    "pg": "^8.11.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

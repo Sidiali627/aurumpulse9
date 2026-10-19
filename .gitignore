@@ -1,0 +1,22 @@
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Backups, Database & Logs
+.backup/
+database.json
+database.json.tmp.*
+database.json.bak
+*.log
+npm-debug.log*
+
+# OS / Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
