@@ -286,7 +286,7 @@ async function runTests() {
         assert(!invalidatedOB.bullishConfs.includes('Bullish Order Block'), 'Invalidated OB must be removed');
     });
 
-    it('5.2 manageOpenTradesLifecycle resolves ambiguous candle with worst-case execution (SL first)', async () => {
+    await itAsync('5.2 manageOpenTradesLifecycle resolves ambiguous candle with worst-case execution (SL first)', async () => {
         const { engineState, manageOpenTradesLifecycle, saveActiveTradesToDB } = require('../bot_engine.js');
         const initialStats = JSON.parse(JSON.stringify(loadDB().stats));
         
@@ -325,6 +325,7 @@ async function runTests() {
 
         // Restore clean persistent stats baseline to prevent test pollution
         await updateDB((d) => { d.stats = initialStats; });
+        await saveDB(loadDB());
     });
 
     it('5.3 findActiveORBSession rejects weekend candles without error', () => {
@@ -342,7 +343,7 @@ async function runTests() {
         assert(orbRes.reason.includes('عطلة نهاية الأسبوع'), 'Must report weekend status');
     });
 
-    it('6.1 saveActiveTradesToDB and restoreActiveTradesFromDB preserve trades and deduplication state', () => {
+    await itAsync('6.1 saveActiveTradesToDB and restoreActiveTradesFromDB preserve trades and deduplication state', async () => {
         const { engineState, saveActiveTradesToDB, restoreActiveTradesFromDB } = require('../bot_engine.js');
         engineState.activeTrades = [{
             id: 'RESTART-TEST-1',
@@ -358,7 +359,7 @@ async function runTests() {
             alertsSent: { entry: true, tp1: true, be: true, tp2: false, sl: false }
         }];
 
-        saveActiveTradesToDB();
+        await saveActiveTradesToDB();
 
         // Simulate complete restart: clear engineState
         engineState.activeTrades = [];
@@ -373,7 +374,7 @@ async function runTests() {
 
         // Clean up
         engineState.activeTrades = [];
-        saveActiveTradesToDB();
+        await saveActiveTradesToDB();
     });
 
     console.log('\n========================================================');

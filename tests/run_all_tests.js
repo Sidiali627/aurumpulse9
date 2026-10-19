@@ -12,7 +12,8 @@ const testSuites = [
   { name: 'Phase 4: Quantitative Backtesting & Robustness', file: 'tests/test_phase4_backtest.js' },
   { name: 'Render Deployment & Demo-Mode Verification', file: 'tests/test_render_deployment.js' },
   { name: 'Phase 5: Production Licensing & Security Architecture', file: 'tests/test_production_licensing.js' },
-  { name: 'Database Adapter & PostgreSQL Integration', file: 'tests/test_postgres_integration.js' }
+  { name: 'Database Adapter & PostgreSQL Integration', file: 'tests/test_postgres_integration.js' },
+  { name: 'Live Price Feed & Real-Time Latency', file: 'tests/test_live_price_feed.js' }
 ];
 
 console.log('========================================================================');

@@ -119,7 +119,7 @@ async function runTests() {
     // -------------------------------------------------------------------------
     // 3. فحص استعادة الصفقات المفتوحة عند إعادة تشغيل السيرفر (Task 2: Restart Recovery)
     // -------------------------------------------------------------------------
-    it('3.1 Active trades persist to database.json and survive server restart simulation', () => {
+    await itAsync('3.1 Active trades persist to database.json and survive server restart simulation', async () => {
         const sampleTrade = {
             id: 'TEST-RECOVERY-001',
             side: 'BUY',
@@ -135,7 +135,7 @@ async function runTests() {
         };
 
         engineState.activeTrades = [sampleTrade];
-        saveActiveTradesToDB();
+        await saveActiveTradesToDB();
 
         // محاكاة إغلاق السيرفر وإفراغ الذاكرة المؤقتة بالكامل
         engineState.activeTrades = [];
@@ -151,7 +151,7 @@ async function runTests() {
 
         // تنظيف الصفقة التجريبية
         engineState.activeTrades = [];
-        saveActiveTradesToDB();
+        await saveActiveTradesToDB();
     });
 
     // -------------------------------------------------------------------------
@@ -175,7 +175,7 @@ async function runTests() {
         const initialStats = JSON.parse(JSON.stringify(loadDB().stats));
 
         engineState.activeTrades = [testTrade];
-        saveActiveTradesToDB();
+        await saveActiveTradesToDB();
 
         // 1. سعر السوق يصل للهدف الأول TP1 ($2752.00)
         await manageOpenTradesLifecycle(2753.00);
@@ -203,10 +203,11 @@ async function runTests() {
         // التحقق من تسجيل الصفقة بنجاح في الإحصائيات ثم استعادة خط الأساس
         assert.strictEqual(loadDB().stats.totalSignals, initialStats.totalSignals + 1, 'Total signals incremented');
         await updateDB((d) => { d.stats = initialStats; });
+        await saveDB(loadDB());
 
         // تنظيف
         engineState.activeTrades = [];
-        saveActiveTradesToDB();
+        await saveActiveTradesToDB();
     });
 
     // -------------------------------------------------------------------------

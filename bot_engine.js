@@ -63,6 +63,8 @@ loadEnv();
 // ============================================================================
 const BRAND_NAME = 'AurumPulse ICT';
 const INSTRUMENT_NAME = 'PAXG/USDT (Binance Gold Feed)';
+const PRIMARY_MARKET_API = 'https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=80';
+const FALLBACK_MARKET_API = 'https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=80';
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '';
 const MASTER_ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID ? String(process.env.ADMIN_CHAT_ID).trim() : '7452671292';
 const ADMIN_CONTACT_USER = process.env.ADMIN_CONTACT_USER || '@alpha34';
@@ -83,6 +85,11 @@ let engineState = {
     demoMode: IS_DEMO_MODE,
     lastPrice: 0,
     atr: 0,
+    lastPriceTimestamp: null,
+    lastScanTime: null,
+    sourceLatencyMs: 0,
+    feedStatus: 'INITIALIZING',
+    feedSource: 'Binance PAXG/USDT (24/7 Spot Token Feed)',
     sessionName: 'خارج أوقات الجلسات (انتظار الافتتاح) ⏳',
     sessionKey: null,
     orh: 0,
@@ -562,7 +569,7 @@ function evaluateSignalCandidate(candles, orbInfo, atr, db, options = {}) {
 // 8. إدارة الصفقات المفتوحة (Lifecycle & Worst-Case Execution)
 // ============================================================================
 function saveActiveTradesToDB() {
-    updateDB((db) => {
+    return updateDB((db) => {
         db.activeTrades = engineState.activeTrades;
     });
 }
@@ -587,7 +594,7 @@ function restoreActiveTradesFromDB() {
 }
 
 function recordSignalOutcome(side, session, rValue, statusLabel) {
-    updateDB((db) => {
+    return updateDB((db) => {
         db.stats.totalSignals += 1;
         if (rValue > 0) db.stats.wins += 1;
         else if (rValue < 0) db.stats.losses += 1;
@@ -656,9 +663,9 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
             if (isCandle && low <= effectiveSl && high >= t.tp2) {
                 t.alertsSent.sl = true;
                 const outcomeR = t.beMoved ? 0.0 : -1.0;
-                recordSignalOutcome('BUY', t.session, outcomeR, t.beMoved ? 'BE (Worst-Case)' : 'SL (Worst-Case)');
+                await recordSignalOutcome('BUY', t.session, outcomeR, t.beMoved ? 'BE (Worst-Case)' : 'SL (Worst-Case)');
                 engineState.activeTrades.splice(i, 1);
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     t.beMoved
                         ? `🛡️ <b>شمعة متذبذبة: لمست الوقف والهدف معاً — تم احتساب الخروج على الدخول (BE 0R) بأسوأ سيناريو.</b>`
@@ -672,7 +679,7 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
                 t.alertsSent.tp1 = true;
                 t.beMoved = true;
                 t.alertsSent.be = true;
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     `🛡️ <b>تحديث إدارة الصفقة (تأمين الدخول Break-Even) | ${BRAND_NAME}</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -684,9 +691,9 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
             // 3. اكتمال الهدف النهائي TP2
             if (high >= t.tp2 && !t.alertsSent.tp2) {
                 t.alertsSent.tp2 = true;
-                recordSignalOutcome('BUY', t.session, parseFloat(t.rr), 'WIN 🎯');
+                await recordSignalOutcome('BUY', t.session, parseFloat(t.rr), 'WIN 🎯');
                 engineState.activeTrades.splice(i, 1);
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     `🚀 <b>اكتمال الهدف النهائي للسيولة (Full TP2 Hit) 🎯 | ${BRAND_NAME}</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -697,9 +704,9 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
             else if (low <= effectiveSl && !t.alertsSent.sl) {
                 t.alertsSent.sl = true;
                 const outcomeR = t.beMoved ? 0.0 : -1.0;
-                recordSignalOutcome('BUY', t.session, outcomeR, t.beMoved ? 'BE 🛡️' : 'SL 🛑');
+                await recordSignalOutcome('BUY', t.session, outcomeR, t.beMoved ? 'BE 🛡️' : 'SL 🛑');
                 engineState.activeTrades.splice(i, 1);
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     t.beMoved
                         ? `🛡️ <b>أُغلقت صفقة الشراء المتبقية عند نقطة الدخول (Break-Even 0R) بعد جني أرباح TP1.</b>`
@@ -712,9 +719,9 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
             if (isCandle && high >= effectiveSl && low <= t.tp2) {
                 t.alertsSent.sl = true;
                 const outcomeR = t.beMoved ? 0.0 : -1.0;
-                recordSignalOutcome('SELL', t.session, outcomeR, t.beMoved ? 'BE (Worst-Case)' : 'SL (Worst-Case)');
+                await recordSignalOutcome('SELL', t.session, outcomeR, t.beMoved ? 'BE (Worst-Case)' : 'SL (Worst-Case)');
                 engineState.activeTrades.splice(i, 1);
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     t.beMoved
                         ? `🛡️ <b>شمعة متذبذبة: لمست الوقف والهدف معاً — تم احتساب الخروج على الدخول (BE 0R) بأسوأ سيناريو.</b>`
@@ -727,7 +734,7 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
                 t.alertsSent.tp1 = true;
                 t.beMoved = true;
                 t.alertsSent.be = true;
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     `🛡️ <b>تحديث إدارة الصفقة (تأمين الدخول Break-Even) | ${BRAND_NAME}</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -738,9 +745,9 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
 
             if (low <= t.tp2 && !t.alertsSent.tp2) {
                 t.alertsSent.tp2 = true;
-                recordSignalOutcome('SELL', t.session, parseFloat(t.rr), 'WIN 🎯');
+                await recordSignalOutcome('SELL', t.session, parseFloat(t.rr), 'WIN 🎯');
                 engineState.activeTrades.splice(i, 1);
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     `🚀 <b>اكتمال الهدف النهائي للسيولة (Full TP2 Hit) 🎯 | ${BRAND_NAME}</b>\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -750,9 +757,9 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
             else if (high >= effectiveSl && !t.alertsSent.sl) {
                 t.alertsSent.sl = true;
                 const outcomeR = t.beMoved ? 0.0 : -1.0;
-                recordSignalOutcome('SELL', t.session, outcomeR, t.beMoved ? 'BE 🛡️' : 'SL 🛑');
+                await recordSignalOutcome('SELL', t.session, outcomeR, t.beMoved ? 'BE 🛡️' : 'SL 🛑');
                 engineState.activeTrades.splice(i, 1);
-                saveActiveTradesToDB();
+                await saveActiveTradesToDB();
                 await broadcastToActiveSubscribers(
                     t.beMoved
                         ? `🛡️ <b>أُغلقت صفقة البيع المتبقية عند نقطة الدخول (Break-Even 0R) بعد تأمين TP1.</b>`
@@ -764,14 +771,25 @@ async function manageOpenTradesLifecycle(priceOrCandle) {
 }
 
 // ============================================================================
-// 9. محرك فحص السوق الموحد (Unified Real-Time Scanner)
+// 9. محرك فحص السوق الموحد (Unified Real-Time Scanner with Failover)
 // ============================================================================
 async function scanGoldMarket() {
     try {
-        const raw = await nativeRequest('https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=80');
+        let raw;
+        let usedEndpoint = 'primary';
+        try {
+            raw = await nativeRequest(PRIMARY_MARKET_API);
+            if (!Array.isArray(raw)) throw new Error('Invalid response from primary market API');
+        } catch (priErr) {
+            console.warn('[MARKET DATA WARNING] Primary Binance API failed, trying fallback vision API:', priErr.message);
+            usedEndpoint = 'fallback';
+            raw = await nativeRequest(FALLBACK_MARKET_API);
+        }
+
         const validation = validateCandles(raw);
         if (!validation.valid) {
             console.warn('[CANDLE VALIDATION REJECTED]:', validation.error);
+            engineState.feedStatus = 'DATA_INVALID';
             return;
         }
 
@@ -781,8 +799,14 @@ async function scanGoldMarket() {
 
         const orbInfo = findActiveORBSession(candles);
 
+        const now = Date.now();
         engineState.lastPrice = curr.close;
         engineState.atr = atr;
+        engineState.lastPriceTimestamp = curr.time * 1000;
+        engineState.lastScanTime = now;
+        engineState.sourceLatencyMs = Math.max(0, now - (curr.time * 1000));
+        engineState.feedStatus = 'LIVE';
+        engineState.feedSource = usedEndpoint === 'primary' ? 'Binance Primary (api.binance.com)' : 'Binance Vision (data-api.binance.vision)';
 
         await manageOpenTradesLifecycle(curr);
 
@@ -1467,6 +1491,28 @@ const server = http.createServer(async (req, res) => {
                 stats: db.stats
             }
         ));
+        return;
+    }
+
+    if (url.pathname === '/api/price') {
+        const now = Date.now();
+        const ageMs = engineState.lastScanTime ? (now - engineState.lastScanTime) : null;
+        const isStale = ageMs !== null && ageMs > 30000;
+        const status = isStale ? 'DELAYED' : (engineState.lastPrice ? 'LIVE' : 'INITIALIZING');
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+            symbol: 'PAXGUSDT',
+            instrument: INSTRUMENT_NAME,
+            price: engineState.lastPrice,
+            atr: engineState.atr,
+            timestamp: engineState.lastPriceTimestamp,
+            lastScanTime: engineState.lastScanTime,
+            ageMs: ageMs,
+            status: status,
+            feedSource: engineState.feedSource,
+            demoMode: IS_DEMO_MODE
+        }));
         return;
     }
 

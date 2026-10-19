@@ -194,7 +194,13 @@
                     <span class="brand-font font-black text-base tracking-wide gold-gradient-text">AurumPulse</span>
                     <span class="brand-font text-[10px] text-slate-400 tracking-widest hidden sm:inline">XAU/USD ICT BREAKOUT RADAR</span>
                     <span id="feedSourceBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 mono">
-                        BINANCE PAXG/USDT FEED
+                        BINANCE PAXG/USDT (24/7)
+                    </span>
+                    <span id="feedStatusBadge" class="text-[10px] px-2 py-0.5 rounded font-bold mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        🟢 LIVE
+                    </span>
+                    <span id="feedTimestampBadge" class="text-[10px] mono text-slate-400 hidden sm:inline" title="وقت آخر إشارة من البورصة">
+                        --:--:-- UTC
                     </span>
                 </div>
                 <div class="flex items-center gap-2 mt-0.5">
@@ -208,7 +214,10 @@
         <!-- مؤشرات ORH / ORL والسعر الفوري -->
         <div class="flex flex-wrap items-center gap-4 bg-[#07090e] px-4 py-1.5 rounded-xl border border-amber-500/25">
             <div>
-                <span class="text-[10px] text-slate-400 block">BINANCE PAXG/USDT</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 block">BINANCE PAXG/USDT</span>
+                    <span id="livePulseDot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                </div>
                 <span id="realPriceDisplay" class="mono text-lg font-extrabold text-amber-400">---.--</span>
             </div>
             <div class="h-7 w-px bg-amber-500/20"></div>
@@ -330,10 +339,10 @@
 
                 <div class="flex items-center gap-1 bg-[#07090e] p-1 rounded-lg border border-amber-500/20">
                     <button onclick="toggleChartMode('terminal')" id="mode-terminal" class="text-[11px] px-2.5 py-1 rounded font-bold bg-amber-500/20 text-amber-300">
-                        شارت AurumPulse الذهبي
+                        شارت AurumPulse الذهبي (Binance PAXG 24/7)
                     </button>
                     <button onclick="toggleChartMode('tv')" id="mode-tv" class="text-[11px] px-2.5 py-1 rounded font-bold text-slate-400 hover:text-white">
-                        شارت OANDA الرسمي
+                        شارت OANDA الرسمي (Spot XAU/USD)
                     </button>
                 </div>
             </div>
@@ -343,13 +352,22 @@
                 <div id="tvchart" class="w-full h-full"></div>
             </div>
 
-            <!-- شارت OANDA الرسمي -->
-            <div id="officialTvWrapper" class="hidden gold-card rounded-xl overflow-hidden h-[390px]">
-                <iframe
-                    src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hide_side_toolbar=0"
-                    class="w-full h-full border-0"
-                    allowfullscreen>
-                </iframe>
+            <!-- شارت OANDA الرسمي مع تنبيه شفافية الأصل المالي -->
+            <div id="officialTvWrapper" class="hidden gold-card rounded-xl overflow-hidden h-[410px] flex flex-col">
+                <div class="flex-1">
+                    <iframe
+                        src="https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=15&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hide_side_toolbar=0"
+                        class="w-full h-full border-0"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+                <div class="bg-[#07090e] border-t border-amber-500/20 px-3 py-1.5 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
+                    <span class="flex items-center gap-1">
+                        <span class="text-amber-400">ℹ️</span>
+                        <span><b>شفافية الأسعار:</b> شارت OANDA يمثل الذهب الفوري (Spot XAU/USD) عبر وسطاء الفوركس (يغلق في عطلة نهاية الأسبوع)، بينما يعتمد رادار AurumPulse على عقد الذهب الحقيقي (PAXG/USDT) من بينانس للعمل 24/7.</span>
+                    </span>
+                    <span class="text-amber-300/80 font-mono text-[10px]">OANDA:XAUUSD vs BINANCE:PAXGUSDT</span>
+                </div>
             </div>
 
             <!-- التبويبات السفلية: الصفقات الجارية + سجل الاختبار (القسم 10) -->
@@ -691,49 +709,285 @@
             });
         }
 
+        let wsConnection = null;
+        let reconnectTimer = null;
+        let reconnectAttempts = 0;
+        let fallbackPollingTimer = null;
+        let watchdogTimer = null;
+        let lastTickTime = Date.now();
+        let lastSourceTimestamp = null;
+        let abortFetchController = null;
+
+        const WS_ENDPOINTS = [
+            'wss://stream.binance.com:9443/stream',
+            'wss://stream.binance.com:443/stream',
+            'wss://data-stream.binance.vision/stream'
+        ];
+        let currentWsEndpointIdx = 0;
+
+        function updateStatusBadge(status, delayMs = null, sourceTime = null) {
+            const badge = document.getElementById('feedStatusBadge');
+            const timeBadge = document.getElementById('feedTimestampBadge');
+            const pulseDot = document.getElementById('livePulseDot');
+
+            if (timeBadge && sourceTime) {
+                const d = new Date(sourceTime);
+                const utcStr = d.toISOString().split('T')[1].replace('Z', ' UTC');
+                timeBadge.innerText = utcStr;
+            }
+
+            if (!badge) return;
+
+            if (status === 'LIVE') {
+                const latencyText = delayMs !== null ? ` (${delayMs}ms)` : '';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded font-bold mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                badge.innerText = `🟢 LIVE${latencyText}`;
+                if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+            } else if (status === 'DELAYED') {
+                const ageSec = delayMs !== null ? ` (+${Math.round(delayMs / 1000)}s)` : '';
+                badge.className = 'text-[10px] px-2 py-0.5 rounded font-bold mono bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                badge.innerText = `🟡 DELAYED${ageSec}`;
+                if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+            } else if (status === 'RECONNECTING') {
+                badge.className = 'text-[10px] px-2 py-0.5 rounded font-bold mono bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                badge.innerText = '🔄 RECONNECTING...';
+                if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping';
+            } else {
+                badge.className = 'text-[10px] px-2 py-0.5 rounded font-bold mono bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                badge.innerText = '🔴 DISCONNECTED';
+                if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+            }
+        }
+
         async function fetchRealGoldCandles(tf) {
+            if (abortFetchController) {
+                try { abortFetchController.abort(); } catch (_) {}
+            }
+            abortFetchController = new AbortController();
+            const signal = abortFetchController.signal;
+
+            const PRIMARY_HTTP = 'https://api.binance.com/api/v3/klines';
+            const FALLBACK_HTTP = 'https://data-api.binance.vision/api/v3/klines';
+
+            async function fetchKlinesWithFallback(interval, limit) {
+                try {
+                    const r = await fetch(`${PRIMARY_HTTP}?symbol=PAXGUSDT&interval=${interval}&limit=${limit}`, { signal });
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return await r.json();
+                } catch (priErr) {
+                    if (signal.aborted) throw priErr;
+                    const r2 = await fetch(`${FALLBACK_HTTP}?symbol=PAXGUSDT&interval=${interval}&limit=${limit}`, { signal });
+                    return await r2.json();
+                }
+            }
+
             try {
-                const [resTf, resM15] = await Promise.all([
-                    fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=${tf}&limit=120`),
-                    fetch(`https://data-api.binance.vision/api/v3/klines?symbol=PAXGUSDT&interval=15m&limit=120`)
+                const [rawTf, rawM15] = await Promise.all([
+                    fetchKlinesWithFallback(tf, 120),
+                    fetchKlinesWithFallback('15m', 120)
                 ]);
+
                 const mapFn = raw => raw.map(d => ({
                     time: Math.floor(d[0] / 1000),
                     open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
                 }));
-                candles = mapFn(await resTf.json());
-                m15Candles = mapFn(await resM15.json());
 
-                if (candleSeries) candleSeries.setData(candles);
-                updateRealTick(candles[candles.length - 1].close);
+                candles = mapFn(rawTf);
+                m15Candles = mapFn(rawM15);
+
+                if (candleSeries && candles.length > 0) {
+                    candleSeries.setData(candles);
+                }
+                if (candles.length > 0) {
+                    const lastCandle = candles[candles.length - 1];
+                    updateRealTick(lastCandle.close, lastCandle.time * 1000);
+                }
                 runRealAlgorithmicScanner();
                 startLiveStream(tf);
             } catch (e) {
-                console.error(e);
+                if (e.name !== 'AbortError') {
+                    console.error('[CANDLE FETCH ERROR]', e);
+                    startFallbackPolling();
+                }
             }
         }
 
         function startLiveStream(tf) {
-            if (wsConnection) wsConnection.close();
-            wsConnection = new WebSocket(`wss://data-stream.binance.vision/ws/paxgusdt@kline_${tf}`);
-            wsConnection.onmessage = (e) => {
-                const msg = JSON.parse(e.data);
-                if (!msg.k) return;
-                const k = msg.k;
-                const c = { time: Math.floor(k.t / 1000), open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c) };
-                const idx = candles.length - 1;
-                if (idx >= 0 && candles[idx].time === c.time) candles[idx] = c;
-                else { candles.push(c); runRealAlgorithmicScanner(); }
-                if (candleSeries) candleSeries.update(c);
-                updateRealTick(c.close);
-            };
+            if (wsConnection) {
+                try {
+                    wsConnection.onopen = null;
+                    wsConnection.onclose = null;
+                    wsConnection.onerror = null;
+                    wsConnection.onmessage = null;
+                    wsConnection.close();
+                } catch (_) {}
+                wsConnection = null;
+            }
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+
+            const endpointBase = WS_ENDPOINTS[currentWsEndpointIdx % WS_ENDPOINTS.length];
+            const streamUrl = `${endpointBase}?streams=paxgusdt@kline_${tf}/paxgusdt@ticker`;
+
+            try {
+                wsConnection = new WebSocket(streamUrl);
+
+                wsConnection.onopen = () => {
+                    reconnectAttempts = 0;
+                    stopFallbackPolling();
+                    updateStatusBadge('LIVE', 0, Date.now());
+                };
+
+                wsConnection.onmessage = (e) => {
+                    try {
+                        const msg = JSON.parse(e.data);
+                        const stream = msg.stream || '';
+                        const data = msg.data || msg;
+
+                        // 1. Ticker Stream (Real-Time Bid/Ask & Last Price every 1s)
+                        if (stream.includes('@ticker') || data.e === '24hrTicker') {
+                            const price = parseFloat(data.c);
+                            const bid = data.b ? parseFloat(data.b) : null;
+                            const ask = data.a ? parseFloat(data.a) : null;
+                            const sourceTime = data.E || Date.now();
+                            updateRealTick(price, sourceTime, bid, ask);
+                        }
+
+                        // 2. Kline Stream (Candle updates)
+                        if (stream.includes('@kline') || data.e === 'kline') {
+                            const k = data.k;
+                            if (!k) return;
+                            const c = {
+                                time: Math.floor(k.t / 1000),
+                                open: parseFloat(k.o),
+                                high: parseFloat(k.h),
+                                low: parseFloat(k.l),
+                                close: parseFloat(k.c)
+                            };
+                            const idx = candles.length - 1;
+                            if (idx >= 0 && candles[idx].time === c.time) {
+                                candles[idx] = c;
+                            } else {
+                                candles.push(c);
+                                runRealAlgorithmicScanner();
+                            }
+                            if (candleSeries) candleSeries.update(c);
+                            updateRealTick(c.close, data.E || (c.time * 1000));
+                        }
+                    } catch (err) {
+                        console.error('[STREAM PARSE ERROR]', err);
+                    }
+                };
+
+                wsConnection.onerror = (err) => {
+                    console.warn('[WS ERROR] Live stream encountered an error, falling back to HTTP:', err);
+                    startFallbackPolling();
+                };
+
+                wsConnection.onclose = () => {
+                    console.warn('[WS CLOSED] Connection dropped. Scheduling reconnection...');
+                    updateStatusBadge('RECONNECTING');
+                    startFallbackPolling();
+                    scheduleReconnect(tf);
+                };
+            } catch (err) {
+                console.error('[WS INIT ERROR]', err);
+                startFallbackPolling();
+                scheduleReconnect(tf);
+            }
         }
 
-        function updateRealTick(price) {
+        function scheduleReconnect(tf) {
+            if (reconnectTimer) return;
+            reconnectAttempts++;
+            if (reconnectAttempts > 2) {
+                currentWsEndpointIdx = (currentWsEndpointIdx + 1) % WS_ENDPOINTS.length;
+            }
+            const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 10000) + Math.random() * 500;
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                startLiveStream(tf);
+            }, delay);
+        }
+
+        function startFallbackPolling() {
+            if (fallbackPollingTimer) return;
+            pollFallbackPrice();
+            fallbackPollingTimer = setInterval(pollFallbackPrice, 3000);
+        }
+
+        function stopFallbackPolling() {
+            if (fallbackPollingTimer) {
+                clearInterval(fallbackPollingTimer);
+                fallbackPollingTimer = null;
+            }
+        }
+
+        async function pollFallbackPrice() {
+            try {
+                const baseUrl = (window.location.protocol.startsWith('http') && (window.location.port === '8080' || window.location.port === ''))
+                    ? ''
+                    : 'http://localhost:8080';
+
+                const res = await fetch(`${baseUrl}/api/price`, { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.price) {
+                        updateRealTick(data.price, data.timestamp || data.lastScanTime);
+                        return;
+                    }
+                }
+            } catch (_) {
+                try {
+                    const res2 = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT', { cache: 'no-store' });
+                    if (res2.ok) {
+                        const data2 = await res2.json();
+                        if (data2.price) {
+                            updateRealTick(parseFloat(data2.price), Date.now());
+                        }
+                    }
+                } catch (_) {}
+            }
+        }
+
+        function startWatchdog() {
+            if (watchdogTimer) clearInterval(watchdogTimer);
+            watchdogTimer = setInterval(() => {
+                const age = Date.now() - lastTickTime;
+                if (age > 15000) {
+                    updateStatusBadge('DISCONNECTED', age, lastSourceTimestamp);
+                    startFallbackPolling();
+                    if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+                        scheduleReconnect(currentTf);
+                    }
+                } else if (age > 4000) {
+                    updateStatusBadge('DELAYED', age, lastSourceTimestamp);
+                }
+            }, 1000);
+        }
+
+        function updateRealTick(price, sourceTime = null, bid = null, ask = null) {
+            if (!price || isNaN(price)) return;
             liveBid = parseFloat(price.toFixed(2));
-            document.getElementById('realPriceDisplay').innerText = `$${liveBid.toFixed(2)}`;
-            document.getElementById('btnBidPrice').innerText = liveBid.toFixed(2);
-            document.getElementById('btnAskPrice').innerText = (liveBid + SPREAD).toFixed(2);
+            lastTickTime = Date.now();
+
+            const priceEl = document.getElementById('realPriceDisplay');
+            if (priceEl) priceEl.innerText = `$${liveBid.toFixed(2)}`;
+
+            const btnBid = document.getElementById('btnBidPrice');
+            if (btnBid) btnBid.innerText = (bid !== null ? bid : liveBid).toFixed(2);
+
+            const btnAsk = document.getElementById('btnAskPrice');
+            if (btnAsk) btnAsk.innerText = (ask !== null ? ask : (liveBid + SPREAD)).toFixed(2);
+
+            if (sourceTime) {
+                lastSourceTimestamp = sourceTime;
+                const delayMs = Math.max(0, Date.now() - sourceTime);
+                updateStatusBadge('LIVE', delayMs, sourceTime);
+            }
+
             processOrdersOnTick();
             calculateRiskMetrics();
         }
@@ -1060,6 +1314,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             verifySavedLicense();
             initTerminalChart();
+            startWatchdog();
             fetchRealGoldCandles('15m');
         });
     </script>
